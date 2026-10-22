@@ -1,6 +1,9 @@
 // 状态 / 角色 / 运输方式 / 平台主数据的中文 label
 import type {
   ActiveStatus,
+  AlertLevel,
+  AlertStatus,
+  AlertType,
   BillStatus,
   CalcMethod,
   ChargeType,
@@ -8,8 +11,12 @@ import type {
   ContainerStatus,
   ContractStatus,
   ContractType,
+  DeviceStatus,
+  DeviceType,
   DocSignStatus,
   DocType,
+  FenceStatus,
+  FenceType,
   IntegrationStatus,
   NodeType,
   NotificationType,
@@ -18,13 +25,21 @@ import type {
   OrderStatus,
   OrderType,
   PartnerType,
+  PlanStatus,
+  PlanStrategy,
   Priority,
   QuoteStatus,
+  ResourceType,
   Role,
+  ScheduleStatus,
   SealOwnerType,
   SegmentMode,
   SegmentStatus,
   StorageStatus,
+  TicketStatus,
+  TransferWindowStatus,
+  VehicleStatus,
+  VehicleType,
   WaybillEventType,
   WaybillStatus,
   WaybillType,
@@ -281,3 +296,101 @@ export const SEAL_OWNER_LABELS: Record<SealOwnerType, string> = {
 export function modeLabel(mode: SegmentMode | null | undefined): string {
   return mode ? MODE_LABELS[mode] : '';
 }
+
+// ── Stage 3：运力池 / 智能调度 / 预警 / IoT ─────────────────────────────────
+
+export const VEHICLE_TYPE_LABELS: Record<VehicleType, string> = {
+  TRACTOR: '牵引车',
+  TRAILER: '挂车',
+  VAN: '厢式货车',
+};
+
+export const VEHICLE_STATUS_LABELS: Record<VehicleStatus, string> = {
+  IDLE: '空闲',
+  IN_TASK: '任务中',
+  MAINTENANCE: '维护中',
+};
+
+export const SCHEDULE_STATUS_LABELS: Record<ScheduleStatus, string> = {
+  PLANNED: '计划中',
+  OPEN: '可订舱',
+  DEPARTED: '已发车/已开航',
+  ARRIVED: '已到达',
+  CANCELLED: '已取消',
+};
+
+export const PLAN_STRATEGY_LABELS: Record<PlanStrategy, string> = {
+  COST: '成本优先',
+  TIME: '时效优先',
+  BALANCED: '综合平衡',
+};
+
+export const PLAN_STATUS_LABELS: Record<PlanStatus, string> = {
+  DRAFT: '草稿',
+  CONFIRMED: '已确认',
+  REJECTED: '已作废',
+};
+
+export const RESOURCE_TYPE_LABELS: Record<ResourceType, string> = {
+  VEHICLE: '车辆',
+  TRAIN: '班列',
+  VESSEL: '班轮',
+};
+
+export const TRANSFER_WINDOW_STATUS_LABELS: Record<TransferWindowStatus, string> = {
+  OK: '衔接充裕',
+  TIGHT: '衔接紧张',
+  MISSED: '衔接错过',
+};
+
+export const ALERT_TYPE_LABELS: Record<AlertType, string> = {
+  DELAY: '延误',
+  DEVIATION: '偏航',
+  TEMP_HUMIDITY: '温湿度异常',
+  STAY: '异常停留',
+  DOOR_OPEN: '箱门开启',
+  EXCEPTION: '异常事件',
+};
+
+export const ALERT_LEVEL_LABELS: Record<AlertLevel, string> = {
+  INFO: '提示',
+  WARN: '警告',
+  CRITICAL: '严重',
+};
+
+export const ALERT_STATUS_LABELS: Record<AlertStatus, string> = {
+  OPEN: '待处理',
+  ACK: '已确认',
+  CLOSED: '已关闭',
+};
+
+export const TICKET_STATUS_LABELS: Record<TicketStatus, string> = {
+  OPEN: '待处理',
+  PROCESSING: '处理中',
+  RESOLVED: '已解决',
+  CLOSED: '已关闭',
+};
+
+export const DEVICE_TYPE_LABELS: Record<DeviceType, string> = {
+  GPS: 'GPS 定位',
+  TEMP_HUMIDITY: '温湿度',
+  DOOR: '门磁',
+  IMPACT: '振动',
+};
+
+export const DEVICE_STATUS_LABELS: Record<DeviceStatus, string> = {
+  ONLINE: '在线',
+  OFFLINE: '离线',
+};
+
+export const FENCE_TYPE_LABELS: Record<FenceType, string> = {
+  PORT: '港口',
+  STATION: '铁路货场',
+  WAREHOUSE: '仓库',
+  DEPOT: '堆场',
+};
+
+export const FENCE_STATUS_LABELS: Record<FenceStatus, string> = {
+  ACTIVE: '启用',
+  DISABLED: '停用',
+};

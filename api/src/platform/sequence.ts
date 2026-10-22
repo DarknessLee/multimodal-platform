@@ -10,7 +10,10 @@ export type DocTable =
   | 'contract'
   | 'price_rule'
   | 'integration_message'
-  | 'document';
+  | 'document'
+  | 'dispatch_plan'
+  | 'alert'
+  | 'exception_ticket';
 
 export type DocColumn =
   | 'order_no'
@@ -20,7 +23,10 @@ export type DocColumn =
   | 'contract_no'
   | 'rule_no'
   | 'msg_no'
-  | 'doc_no';
+  | 'doc_no'
+  | 'plan_no'
+  | 'alert_no'
+  | 'ticket_no';
 
 export interface DocNoOptions {
   table: DocTable;

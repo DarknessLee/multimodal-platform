@@ -5,7 +5,7 @@
         <div class="brand-logo">联</div>
         <div class="brand-text">
           <div class="brand-name">多式联运平台</div>
-          <div class="brand-version">Stage 2 · 一单制与箱管</div>
+          <div class="brand-version">Stage 3 · 智能调度与监控</div>
         </div>
       </div>
 
@@ -108,7 +108,7 @@ const notificationLoading = ref(false);
 const notifications = ref<NotificationItem[]>([]);
 let pollTimer: number | undefined;
 
-const MENU_GROUP_ORDER = ['业务受理', '主数据', '履约执行', '平台治理'];
+const MENU_GROUP_ORDER = ['业务受理', '主数据', '履约执行', '监控预警', '平台治理'];
 
 const visibleMenus = computed<MenuDef[]>(() =>
   MENU_DEFS.filter((item) => auth.hasPermission(item.code)),
@@ -136,6 +136,13 @@ const activeMenu = computed<string>(() => {
     if (view === 'bills') return '/orders?view=bills';
     return '/orders';
   }
+  if (path.startsWith('/dispatch')) {
+    if (path.startsWith('/dispatch/board')) return '/dispatch/board';
+    return '/dispatch/plans';
+  }
+  if (path.startsWith('/capacity')) return '/capacity';
+  if (path.startsWith('/monitor')) return '/monitor';
+  if (path.startsWith('/alerts')) return '/alerts';
   if (path.startsWith('/quotes')) return '/quotes';
   if (path.startsWith('/contracts')) return '/contracts';
   if (path.startsWith('/master/customers')) return '/master/customers';

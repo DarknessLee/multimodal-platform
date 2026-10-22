@@ -77,6 +77,55 @@
           </div>
         </div>
 
+        <!-- 实时定位 / IoT / 预警（Stage 3） -->
+        <div class="card mt-16">
+          <h3 class="card-title">
+            <span class="card-title-text">实时定位 / IoT / 预警</span>
+            <span v-if="liveError" class="muted live-tip">{{ liveError }}</span>
+            <span v-else-if="!live" class="muted live-tip">加载中…</span>
+          </h3>
+          <div v-if="live" class="live-grid">
+            <div class="live-block" data-testid="live-position">
+              <div class="live-block__title">实时位置</div>
+              <template v-if="live.livePosition">
+                <div class="live-value">{{ live.livePosition.nodeName || '—' }}</div>
+                <div class="live-meta mono">
+                  {{ Number(live.livePosition.lng).toFixed(4) }}, {{ Number(live.livePosition.lat).toFixed(4) }}
+                </div>
+                <div class="live-meta muted">{{ formatDateTime(live.livePosition.occurredAt) }}</div>
+              </template>
+              <div v-else class="muted">暂无实时定位</div>
+            </div>
+            <div class="live-block" data-testid="iot-reading">
+              <div class="live-block__title">IoT 读数</div>
+              <template v-if="live.readings">
+                <div class="live-kv"><span>温度</span><span>{{ live.readings.temperature ?? '—' }} ℃</span></div>
+                <div class="live-kv"><span>湿度</span><span>{{ live.readings.humidity ?? '—' }} %</span></div>
+                <div class="live-kv"><span>门磁</span><span>{{ live.readings.doorOpen ? '开门' : '关闭' }}</span></div>
+                <div class="live-kv"><span>上报时间</span><span>{{ formatDateTime(live.readings.reportedAt) }}</span></div>
+              </template>
+              <div v-else class="muted">暂无 IoT 读数</div>
+              <div v-if="live.devices.length" class="live-devices muted">
+                设备：{{ live.devices.map((device) => device.deviceTypeLabel || iotDeviceTypeLabel(device.deviceType)).join(' / ') }}
+              </div>
+            </div>
+            <div class="live-block live-block--alerts" data-testid="live-alerts">
+              <div class="live-block__title">实时预警（{{ live.alerts.length }}）</div>
+              <div v-if="live.alerts.length" class="live-alert-list">
+                <div v-for="alert in live.alerts" :key="alert.id" class="live-alert">
+                  <el-tag :type="alertLevelTagType(alert.level)" size="small" effect="dark">
+                    {{ alert.levelLabel || alertLevelLabel(alert.level) }}
+                  </el-tag>
+                  <span class="live-alert__title">{{ alert.title }}</span>
+                  <span class="muted">{{ formatDateTime(alert.occurredAt) }}</span>
+                </div>
+              </div>
+              <div v-else class="muted">暂无实时预警</div>
+            </div>
+          </div>
+          <el-empty v-else-if="!loading" description="暂无实时监控数据" :image-size="56" />
+        </div>
+
         <!-- 轨迹图 -->
         <div class="card mt-16">
           <h3 class="card-title">
@@ -159,10 +208,16 @@ import StatusTag from '../components/StatusTag.vue';
 import SegmentTable from '../components/SegmentTable.vue';
 import TrackChart from '../components/TrackChart.vue';
 import { fetchTrack, signWaybill } from '../api';
+import { fetchMonitorLive } from '../api/monitor';
 import { useAuthStore } from '../stores/auth';
-import { trackSourceLabel } from '../utils/constants';
+import {
+  alertLevelLabel,
+  alertLevelTagType,
+  iotDeviceTypeLabel,
+  trackSourceLabel,
+} from '../utils/constants';
 import { formatDateTime } from '../utils/format';
-import type { TrackData } from '../types';
+import type { MonitorLive, TrackData } from '../types';
 
 const route = useRoute();
 const router = useRouter();
@@ -174,6 +229,8 @@ const errorText = ref('');
 const signDialogVisible = ref(false);
 const signerName = ref('李经理');
 const signing = ref(false);
+const live = ref<MonitorLive | null>(null);
+const liveError = ref('');
 
 const waybillId = computed(() => String(route.params.id ?? ''));
 
@@ -204,11 +261,22 @@ function sourceColor(source: string): string {
   return '#67c23a';
 }
 
+async function loadLive(): Promise<void> {
+  try {
+    live.value = await fetchMonitorLive(waybillId.value);
+    liveError.value = '';
+  } catch {
+    live.value = null;
+    liveError.value = '实时监控数据暂不可用（Stage 3 接口）';
+  }
+}
+
 async function load(): Promise<void> {
   loading.value = true;
   errorText.value = '';
   try {
     track.value = await fetchTrack(waybillId.value);
+    void loadLive();
   } catch (error) {
     track.value = null;
     errorText.value = error instanceof Error && error.message ? error.message : '轨迹加载失败，请重试';
@@ -313,5 +381,79 @@ onMounted(load);
 .sign-tip {
   font-size: 12px;
   line-height: 1.7;
+}
+
+.live-tip {
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.live-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.live-block {
+  border: 1px solid var(--app-border);
+  border-radius: 8px;
+  padding: 12px 14px;
+  background: #fafcff;
+  min-height: 128px;
+}
+
+.live-block__title {
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 10px;
+  color: var(--app-text-regular);
+}
+
+.live-value {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.live-meta {
+  margin-top: 4px;
+  font-size: 12px;
+}
+
+.live-kv {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12.5px;
+  padding: 2px 0;
+}
+
+.live-devices {
+  margin-top: 6px;
+  font-size: 11.5px;
+}
+
+.live-alert-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.live-alert {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 12.5px;
+}
+
+.live-alert__title {
+  flex: 1;
+  min-width: 120px;
+}
+
+@media (max-width: 1100px) {
+  .live-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 </style>

@@ -122,6 +122,9 @@ const MENU_CODES = [
   'menu:documents',
   'menu:rail',
   'menu:sea',
+  'menu:monitor',
+  'menu:alerts',
+  'menu:capacity',
 ];
 
 const BUTTON_CODES = [
@@ -150,6 +153,12 @@ const BUTTON_CODES = [
   'container:return',
   'rail:apply',
   'sea:book',
+  'dispatch:generate',
+  'dispatch:confirm',
+  'alert:ack',
+  'alert:close',
+  'exception:handle',
+  'iot:ingest',
 ];
 
 export const ROLE_FALLBACK_PERMISSIONS: Record<string, string[]> = {
@@ -227,6 +236,15 @@ export const ROLE_FALLBACK_PERMISSIONS: Record<string, string[]> = {
     'container:release',
     'container:movement',
     'container:return',
+    'menu:monitor',
+    'menu:alerts',
+    'menu:capacity',
+    'dispatch:generate',
+    'dispatch:confirm',
+    'alert:ack',
+    'alert:close',
+    'exception:handle',
+    'iot:ingest',
   ],
   CARRIER: [
     'menu:dashboard',
@@ -235,17 +253,37 @@ export const ROLE_FALLBACK_PERMISSIONS: Record<string, string[]> = {
     'menu:track',
     'menu:waybills',
     'menu:containers',
+    'menu:monitor',
+    'menu:alerts',
     'segment:status',
     'container:movement',
   ],
-  RAIL_CARRIER: ['menu:dashboard', 'menu:orders', 'menu:track', 'menu:waybills', 'menu:rail', 'rail:apply'],
-  SEA_CARRIER: ['menu:dashboard', 'menu:orders', 'menu:track', 'menu:waybills', 'menu:sea', 'sea:book'],
+  RAIL_CARRIER: [
+    'menu:dashboard',
+    'menu:orders',
+    'menu:track',
+    'menu:waybills',
+    'menu:rail',
+    'menu:monitor',
+    'rail:apply',
+  ],
+  SEA_CARRIER: [
+    'menu:dashboard',
+    'menu:orders',
+    'menu:track',
+    'menu:waybills',
+    'menu:sea',
+    'menu:monitor',
+    'sea:book',
+  ],
   TERMINAL: [
     'menu:dashboard',
     'menu:terminal',
     'menu:track',
     'menu:waybills',
     'menu:containers',
+    'menu:monitor',
+    'menu:alerts',
     'segment:status',
     'container:movement',
     'container:return',
@@ -271,7 +309,7 @@ export interface MenuDef {
   group: string;
 }
 
-/** 20 个平台菜单（Stage 2，按权限码渲染） */
+/** 24 个平台菜单（Stage 3，按权限码渲染） */
 export const MENU_DEFS: MenuDef[] = [
   { code: 'menu:dashboard', label: '平台总览', path: '/dashboard', testid: 'nav-dashboard', group: '业务受理' },
   { code: 'menu:orders', label: '订单中心', path: '/orders', testid: 'nav-orders', group: '业务受理' },
@@ -282,7 +320,9 @@ export const MENU_DEFS: MenuDef[] = [
   { code: 'menu:customers', label: '客户管理', path: '/master/customers', testid: 'nav-customers', group: '主数据' },
   { code: 'menu:partners', label: '伙伴管理', path: '/master/partners', testid: 'nav-partners', group: '主数据' },
   { code: 'menu:master', label: '主数据', path: '/master/data', testid: 'nav-master', group: '主数据' },
-  { code: 'menu:dispatch', label: '调度中心', path: '/orders?view=dispatch', testid: 'nav-dispatch', group: '履约执行' },
+  { code: 'menu:dispatch', label: '调度中心', path: '/dispatch/plans', testid: 'nav-dispatch', group: '履约执行' },
+  { code: 'menu:dispatch', label: '调度看板', path: '/dispatch/board', testid: 'nav-board', group: '履约执行' },
+  { code: 'menu:capacity', label: '运力池', path: '/capacity', testid: 'nav-capacity', group: '履约执行' },
   { code: 'menu:tasks', label: '运输任务', path: '/tasks', testid: 'nav-tasks', group: '履约执行' },
   { code: 'menu:terminal', label: '港站作业', path: '/terminal', testid: 'nav-terminal', group: '履约执行' },
   { code: 'menu:containers', label: '箱管中心', path: '/containers', testid: 'nav-containers', group: '履约执行' },
@@ -291,6 +331,8 @@ export const MENU_DEFS: MenuDef[] = [
   { code: 'menu:track', label: '运单跟踪', path: '/orders?view=track', testid: 'nav-track', group: '履约执行' },
   { code: 'menu:settlement', label: '结算工作台', path: '/settlement', testid: 'nav-settlement', group: '履约执行' },
   { code: 'menu:bills', label: '账单中心', path: '/orders?view=bills', testid: 'nav-bills', group: '履约执行' },
+  { code: 'menu:monitor', label: '监控大屏', path: '/monitor', testid: 'nav-monitor', group: '监控预警' },
+  { code: 'menu:alerts', label: '预警中心', path: '/alerts', testid: 'nav-alerts', group: '监控预警' },
   { code: 'menu:integration', label: '集成中心', path: '/integration/messages', testid: 'nav-integration', group: '平台治理' },
   { code: 'menu:audit', label: '审计日志', path: '/audit/logs', testid: 'nav-audit', group: '平台治理' },
 ];
@@ -774,4 +816,195 @@ export function railDemandStatusLabel(status?: string | null): string {
 export function seaBookingStatusLabel(status?: string | null): string {
   if (!status) return '—';
   return SEA_BOOKING_STATUS_LABELS[status] ?? status;
+}
+
+// ───────────────────────────── Stage 3：智能调度 / 运力 / 监控 / 预警 / IoT ─────────────────────────────
+
+export const PLAN_STRATEGY_LABELS: Record<string, string> = {
+  COST: '成本优先',
+  TIME: '时效优先',
+  BALANCED: '综合平衡',
+};
+
+export const PLAN_STATUS_LABELS: Record<string, string> = {
+  DRAFT: '草稿',
+  CONFIRMED: '已确认',
+  REJECTED: '已作废',
+};
+
+export const RESOURCE_TYPE_LABELS: Record<string, string> = {
+  VEHICLE: '车辆',
+  TRAIN: '班列',
+  VESSEL: '班轮',
+};
+
+export const TRANSFER_STATUS_LABELS: Record<string, string> = {
+  OK: '衔接正常',
+  TIGHT: '衔接紧张',
+  MISSED: '错过衔接',
+};
+
+export const VEHICLE_STATUS_LABELS: Record<string, string> = {
+  IDLE: '空闲',
+  IN_TASK: '任务中',
+  MAINTENANCE: '维修中',
+};
+
+export const VEHICLE_TYPE_LABELS: Record<string, string> = {
+  TRACTOR: '牵引车',
+  TRAILER: '挂车',
+  VAN: '厢式车',
+};
+
+export const SCHEDULE_STATUS_LABELS: Record<string, string> = {
+  PLANNED: '计划中',
+  OPEN: '可订舱',
+  DEPARTED: '已发运',
+  ARRIVED: '已到达',
+  CANCELLED: '已取消',
+};
+
+export const ALERT_TYPE_LABELS: Record<string, string> = {
+  DELAY: '延误',
+  DEVIATION: '偏航',
+  TEMP_HUMIDITY: '温湿度',
+  STAY: '异常停留',
+  DOOR_OPEN: '开门',
+  EXCEPTION: '异常',
+};
+
+export const ALERT_LEVEL_LABELS: Record<string, string> = {
+  INFO: '提示',
+  WARN: '警告',
+  CRITICAL: '严重',
+};
+
+export const ALERT_STATUS_LABELS: Record<string, string> = {
+  OPEN: '待处理',
+  ACK: '已确认',
+  CLOSED: '已关闭',
+};
+
+export const EXCEPTION_STATUS_LABELS: Record<string, string> = {
+  OPEN: '待处置',
+  PROCESSING: '处置中',
+  RESOLVED: '已解决',
+  CLOSED: '已关闭',
+};
+
+export const EXCEPTION_TYPE_LABELS: Record<string, string> = {
+  DELAY: '延误',
+  DEVIATION: '偏航',
+  TEMP_HUMIDITY: '温湿度异常',
+  STAY: '异常停留',
+  DOOR_OPEN: '异常开门',
+  DAMAGE: '货损',
+  OTHER: '其他',
+};
+
+export const IOT_DEVICE_TYPE_LABELS: Record<string, string> = {
+  GPS: 'GPS 定位',
+  TEMP_HUMIDITY: '温湿度',
+  DOOR: '门磁',
+  IMPACT: '震动',
+};
+
+export const IOT_DEVICE_STATUS_LABELS: Record<string, string> = {
+  ONLINE: '在线',
+  OFFLINE: '离线',
+};
+
+export const FENCE_TYPE_LABELS: Record<string, string> = {
+  PORT: '港口',
+  STATION: '车站',
+  WAREHOUSE: '仓库',
+  DEPOT: '堆场',
+};
+
+export function planStrategyLabel(strategy?: string | null): string {
+  if (!strategy) return '—';
+  return PLAN_STRATEGY_LABELS[strategy] ?? strategy;
+}
+
+export function planStatusLabel(status?: string | null): string {
+  if (!status) return '—';
+  return PLAN_STATUS_LABELS[status] ?? status;
+}
+
+export function resourceTypeLabel(type?: string | null): string {
+  if (!type) return '—';
+  return RESOURCE_TYPE_LABELS[type] ?? type;
+}
+
+export function transferStatusLabel(status?: string | null): string {
+  if (!status) return '—';
+  return TRANSFER_STATUS_LABELS[status] ?? status;
+}
+
+export function vehicleStatusLabel(status?: string | null): string {
+  if (!status) return '—';
+  return VEHICLE_STATUS_LABELS[status] ?? status;
+}
+
+export function vehicleTypeLabel(type?: string | null): string {
+  if (!type) return '—';
+  return VEHICLE_TYPE_LABELS[type] ?? type;
+}
+
+export function scheduleStatusLabel(status?: string | null): string {
+  if (!status) return '—';
+  return SCHEDULE_STATUS_LABELS[status] ?? status;
+}
+
+export function alertTypeLabel(type?: string | null): string {
+  if (!type) return '—';
+  return ALERT_TYPE_LABELS[type] ?? type;
+}
+
+export function alertLevelLabel(level?: string | null): string {
+  if (!level) return '—';
+  return ALERT_LEVEL_LABELS[level] ?? level;
+}
+
+export function alertStatusLabel(status?: string | null): string {
+  if (!status) return '—';
+  return ALERT_STATUS_LABELS[status] ?? status;
+}
+
+export function exceptionStatusLabel(status?: string | null): string {
+  if (!status) return '—';
+  return EXCEPTION_STATUS_LABELS[status] ?? status;
+}
+
+export function exceptionTypeLabel(type?: string | null): string {
+  if (!type) return '—';
+  return EXCEPTION_TYPE_LABELS[type] ?? type;
+}
+
+export function iotDeviceTypeLabel(type?: string | null): string {
+  if (!type) return '—';
+  return IOT_DEVICE_TYPE_LABELS[type] ?? type;
+}
+
+export function iotDeviceStatusLabel(status?: string | null): string {
+  if (!status) return '—';
+  return IOT_DEVICE_STATUS_LABELS[status] ?? status;
+}
+
+export function fenceTypeLabel(type?: string | null): string {
+  if (!type) return '—';
+  return FENCE_TYPE_LABELS[type] ?? type;
+}
+
+/** 告警/状态标签配色（el-tag type） */
+export function alertLevelTagType(level?: string | null): 'info' | 'warning' | 'danger' {
+  if (level === 'CRITICAL') return 'danger';
+  if (level === 'WARN') return 'warning';
+  return 'info';
+}
+
+export function planStrategyTagType(strategy?: string | null): 'primary' | 'success' | 'warning' {
+  if (strategy === 'COST') return 'success';
+  if (strategy === 'TIME') return 'warning';
+  return 'primary';
 }

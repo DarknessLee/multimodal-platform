@@ -103,6 +103,23 @@ export type StorageStatus = 'STACKED' | 'RELEASED';
 export type SealOwnerType = 'PLATFORM' | 'CUSTOMER' | 'CARRIER' | 'TERMINAL';
 export type NotarizeBizType = 'WAYBILL' | 'DOCUMENT' | 'CONTRACT' | 'BILL' | 'ORDER';
 
+// ── Stage 3：运力池 / 智能调度 / 预警 / IoT ─────────────────────────────────
+export type VehicleType = 'TRACTOR' | 'TRAILER' | 'VAN';
+export type VehicleStatus = 'IDLE' | 'IN_TASK' | 'MAINTENANCE';
+export type ScheduleStatus = 'PLANNED' | 'OPEN' | 'DEPARTED' | 'ARRIVED' | 'CANCELLED';
+export type PlanStrategy = 'COST' | 'TIME' | 'BALANCED';
+export type PlanStatus = 'DRAFT' | 'CONFIRMED' | 'REJECTED';
+export type ResourceType = 'VEHICLE' | 'TRAIN' | 'VESSEL';
+export type TransferWindowStatus = 'OK' | 'TIGHT' | 'MISSED';
+export type AlertType = 'DELAY' | 'DEVIATION' | 'TEMP_HUMIDITY' | 'STAY' | 'DOOR_OPEN' | 'EXCEPTION';
+export type AlertLevel = 'INFO' | 'WARN' | 'CRITICAL';
+export type AlertStatus = 'OPEN' | 'ACK' | 'CLOSED';
+export type TicketStatus = 'OPEN' | 'PROCESSING' | 'RESOLVED' | 'CLOSED';
+export type DeviceType = 'GPS' | 'TEMP_HUMIDITY' | 'DOOR' | 'IMPACT';
+export type DeviceStatus = 'ONLINE' | 'OFFLINE';
+export type FenceType = 'PORT' | 'STATION' | 'WAREHOUSE' | 'DEPOT';
+export type FenceStatus = 'ACTIVE' | 'DISABLED';
+
 /** JWT 解出的登录用户（customer_id 由 requireAuth 从 DB 补全，便于按客户过滤） */
 export interface AuthUser {
   uid: number;
@@ -783,6 +800,174 @@ export interface OrderListItemDto {
   priorityLabel: string;
   contractNo: string | null;
   quoteNo: string | null;
+}
+
+export interface VehicleRow {
+  id: number;
+  vehicle_no: string;
+  plate_no: string;
+  vehicle_type: VehicleType;
+  carrier_partner_id: number;
+  driver_name: string;
+  driver_phone: string;
+  capacity_t: number;
+  container_slots: number;
+  gps_device_no: string | null;
+  status: VehicleStatus;
+  current_node_id: number | null;
+  lng: number | null;
+  lat: number | null;
+  last_seen_at: string | null;
+  created_at: string;
+}
+
+export interface TrainScheduleRow {
+  id: number;
+  train_no: string;
+  operator_partner_id: number;
+  origin_node_id: number;
+  dest_node_id: number;
+  departure_at: string;
+  arrival_at: string;
+  capacity_teu: number;
+  booked_teu: number;
+  status: ScheduleStatus;
+  price_index: number;
+  created_at: string;
+}
+
+export interface VesselScheduleRow {
+  id: number;
+  vessel_name: string;
+  voyage: string;
+  carrier_partner_id: number;
+  origin_node_id: number;
+  dest_node_id: number;
+  etd: string;
+  eta: string;
+  capacity_teu: number;
+  booked_teu: number;
+  status: ScheduleStatus;
+  price_index: number;
+  created_at: string;
+}
+
+export interface DispatchPlanRow {
+  id: number;
+  plan_no: string;
+  order_id: number;
+  waybill_id: number | null;
+  strategy: PlanStrategy;
+  total_cost: number;
+  total_hours: number;
+  reliability: number;
+  score: number;
+  status: PlanStatus;
+  summary: string | null;
+  created_by: number | null;
+  created_at: string;
+  confirmed_at: string | null;
+}
+
+export interface DispatchPlanItemRow {
+  id: number;
+  plan_id: number;
+  seq: number;
+  mode: SegmentMode;
+  carrier_partner_id: number | null;
+  resource_type: ResourceType;
+  resource_id: number | null;
+  start_node_id: number;
+  end_node_id: number;
+  start_at: string;
+  end_at: string;
+  cost: number;
+  transit_hours: number;
+  reliability: number;
+}
+
+export interface TransferWindowRow {
+  id: number;
+  plan_id: number;
+  node_id: number;
+  from_seq: number;
+  to_seq: number;
+  arrival_at: string;
+  departure_at: string;
+  wait_hours: number;
+  status: TransferWindowStatus;
+  created_at: string;
+}
+
+export interface AlertRow {
+  id: number;
+  alert_no: string;
+  alert_type: AlertType;
+  level: AlertLevel;
+  waybill_id: number | null;
+  segment_id: number | null;
+  container_id: number | null;
+  node_id: number | null;
+  title: string;
+  content: string;
+  status: AlertStatus;
+  occurred_at: string;
+  acked_by: number | null;
+  acked_at: string | null;
+  closed_at: string | null;
+  created_at: string;
+}
+
+export interface ExceptionTicketRow {
+  id: number;
+  ticket_no: string;
+  alert_id: number | null;
+  order_id: number | null;
+  waybill_id: number | null;
+  type: string;
+  description: string;
+  assignee_user_id: number | null;
+  status: TicketStatus;
+  resolution: string | null;
+  created_at: string;
+  resolved_at: string | null;
+}
+
+export interface IotDeviceRow {
+  id: number;
+  device_no: string;
+  device_type: DeviceType;
+  container_id: number | null;
+  vehicle_id: number | null;
+  status: DeviceStatus;
+  last_seen_at: string | null;
+  created_at: string;
+}
+
+export interface IotReadingRow {
+  id: number;
+  device_id: number;
+  container_id: number | null;
+  temperature: number | null;
+  humidity: number | null;
+  door_open: number | boolean;
+  impact_g: number | null;
+  lng: number | null;
+  lat: number | null;
+  reported_at: string;
+  created_at: string;
+}
+
+export interface GeoFenceRow {
+  id: number;
+  name: string;
+  fence_type: FenceType;
+  node_id: number | null;
+  center_lng: number;
+  center_lat: number;
+  radius_m: number;
+  status: FenceStatus;
+  created_at: string;
 }
 
 // 把 AuthUser / permissions 挂到 Express Request 上

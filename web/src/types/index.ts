@@ -1025,3 +1025,331 @@ export interface SeaConfirmResult {
   slotNo?: string;
   message: string;
 }
+
+// ───────────────────────────── Stage 3：智能调度 / 运力 / 监控 / 预警 / IoT ─────────────────────────────
+
+export interface DispatchPlanItem {
+  seq: number;
+  mode: string;
+  modeLabel: string;
+  carrierName: string;
+  resourceType: string;
+  resourceName: string;
+  startNode: string;
+  endNode: string;
+  startAt: string;
+  endAt: string;
+  cost: number;
+  transitHours: number;
+  reliability: number;
+}
+
+export interface TransferWindow {
+  nodeName: string;
+  arrivalAt: string;
+  departureAt: string;
+  waitHours: number;
+  status: string;
+  statusLabel?: string;
+}
+
+export interface DispatchPlan {
+  id: number;
+  planNo: string;
+  strategy: string;
+  strategyLabel: string;
+  totalCost: number;
+  totalHours: number;
+  reliability: number;
+  score: number;
+  status: string;
+  statusLabel?: string;
+  summary: string | null;
+  items: DispatchPlanItem[];
+  transferWindows: TransferWindow[];
+  createdAt?: string;
+}
+
+export interface DispatchPlanListItem {
+  id: number;
+  planNo: string;
+  orderId?: number;
+  orderNo: string;
+  strategy: string;
+  strategyLabel: string;
+  totalCost: number;
+  totalHours: number;
+  score: number;
+  status: string;
+  statusLabel?: string;
+  createdAt: string;
+}
+
+export interface PlanGenerateResult {
+  order: { id: number; orderNo: string; status: string; statusLabel?: string };
+  plans: DispatchPlan[];
+}
+
+export interface PlanConfirmResult {
+  planId: number;
+  orderId: number;
+  waybillId: number;
+  waybillNo: string;
+  segments: Segment[];
+}
+
+export interface CapacityMetric {
+  total: number;
+  idle?: number;
+  inTask?: number;
+  maintenance?: number;
+  upcoming?: number;
+  capacityTeu?: number;
+  bookedTeu?: number;
+  utilization: number;
+}
+
+export interface CapacitySummary {
+  vehicles: CapacityMetric;
+  trains: CapacityMetric;
+  vessels: CapacityMetric;
+}
+
+export interface Vehicle {
+  id: number;
+  vehicleNo: string;
+  plateNo: string;
+  vehicleType: string;
+  vehicleTypeLabel?: string;
+  carrierName: string;
+  driverName: string;
+  driverPhone: string;
+  capacityT: number;
+  containerSlots: number;
+  status: string;
+  statusLabel: string;
+  currentNode: string | null;
+  lng: number | null;
+  lat: number | null;
+  lastSeenAt: string | null;
+}
+
+export interface TrainScheduleItem {
+  id: number;
+  trainNo: string;
+  operatorName: string;
+  originNode: string;
+  destNode: string;
+  departureAt: string;
+  arrivalAt: string;
+  capacityTeu: number;
+  bookedTeu: number;
+  utilization: number;
+  status: string;
+  statusLabel: string;
+  priceIndex: number;
+}
+
+export interface VesselScheduleItem {
+  id: number;
+  vesselName: string;
+  voyage: string;
+  carrierName: string;
+  originPort: string;
+  destPort: string;
+  etd: string;
+  eta: string;
+  capacityTeu: number;
+  bookedTeu: number;
+  utilization: number;
+  status: string;
+  statusLabel: string;
+  priceIndex: number;
+}
+
+export interface DispatchBoard {
+  pendingOrders: Array<{
+    id: number;
+    orderNo: string;
+    statusLabel: string;
+    cargoName: string;
+  }>;
+  capacity: CapacitySummary;
+  upcomingTrains: Array<{
+    trainNo: string;
+    route: string;
+    departureAt: string;
+    bookedTeu: number;
+    capacityTeu: number;
+  }>;
+  upcomingVessels: Array<{
+    vesselName: string;
+    voyage: string;
+    route: string;
+    etd: string;
+  }>;
+  transferWindows: Array<{
+    planNo: string;
+    nodeName: string;
+    waitHours: number;
+    status: string;
+  }>;
+  alerts: Array<{
+    id: number;
+    alertType: string;
+    levelLabel: string;
+    title: string;
+  }>;
+}
+
+export interface MonitorKpis {
+  onlineWaybills: number;
+  inTransit: number;
+  onTimeRate: number;
+  alertsOpen: number;
+  containersInTransit: number;
+  avgTransitHours: number;
+}
+
+export interface MonitorLivePoint {
+  waybillId: number;
+  waybillNo: string;
+  containerNo: string | null;
+  lng: number;
+  lat: number;
+  mode: string;
+  statusLabel: string;
+}
+
+export interface MonitorAlertBrief {
+  id: number;
+  level: string;
+  levelLabel: string;
+  title: string;
+  occurredAt: string;
+}
+
+export interface MonitorOverview {
+  kpis: MonitorKpis;
+  statusDistribution: Array<{ status: string; statusLabel: string; count: number }>;
+  modeDistribution: Array<{ mode: string; count: number }>;
+  livePoints: MonitorLivePoint[];
+  recentAlerts: MonitorAlertBrief[];
+  onTimeTrend: { dates: string[]; onTime: number[]; alerts: number[] };
+}
+
+export interface IotReading {
+  id?: number;
+  deviceNo?: string;
+  containerNo?: string | null;
+  temperature: number | null;
+  humidity: number | null;
+  doorOpen: boolean | number;
+  impactG?: number | null;
+  lng?: number | null;
+  lat?: number | null;
+  reportedAt: string;
+}
+
+export interface MonitorLive {
+  waybill: { id: number; waybillNo: string; status: string; statusLabel: string };
+  livePosition: { lng: number; lat: number; nodeName: string | null; occurredAt: string } | null;
+  devices: Array<{
+    id: number;
+    deviceNo: string;
+    deviceType: string;
+    deviceTypeLabel?: string;
+    status: string;
+    statusLabel?: string;
+    lastSeenAt: string | null;
+  }>;
+  readings: IotReading | null;
+  alerts: Array<{
+    id: number;
+    level: string;
+    levelLabel: string;
+    alertType: string;
+    alertTypeLabel?: string;
+    title: string;
+    status: string;
+    statusLabel?: string;
+    occurredAt: string;
+  }>;
+  trail: Array<{ lng: number; lat: number; occurredAt: string }>;
+}
+
+export interface MonitorTrend {
+  dates: string[];
+  onTimeRate: number[];
+  alerts: number[];
+}
+
+export interface AlertItem {
+  id: number;
+  alertNo: string;
+  alertType: string;
+  alertTypeLabel: string;
+  level: string;
+  levelLabel: string;
+  waybillNo: string | null;
+  containerNo: string | null;
+  nodeName: string | null;
+  title: string;
+  content: string;
+  status: string;
+  statusLabel: string;
+  occurredAt: string;
+  ackedAt: string | null;
+  closedAt: string | null;
+}
+
+export interface ExceptionTicket {
+  id: number;
+  ticketNo: string;
+  alertNo: string | null;
+  orderNo: string | null;
+  waybillNo: string | null;
+  type: string;
+  typeLabel: string;
+  description: string;
+  assignee: string | null;
+  status: string;
+  statusLabel: string;
+  createdAt: string;
+  resolvedAt: string | null;
+}
+
+export interface IotDevice {
+  id: number;
+  deviceNo: string;
+  deviceType: string;
+  deviceTypeLabel: string;
+  containerNo: string | null;
+  vehicleNo: string | null;
+  status: string;
+  statusLabel: string;
+  lastSeenAt: string | null;
+}
+
+export interface IotIngestResult {
+  reading: IotReading;
+  alertsCreated: Array<{
+    id: number;
+    alertNo: string;
+    alertType: string;
+    level: string;
+    title: string;
+  }>;
+}
+
+export interface GeoFence {
+  id: number;
+  name: string;
+  fenceType: string;
+  fenceTypeLabel?: string;
+  nodeName?: string | null;
+  centerLng: number;
+  centerLat: number;
+  radiusM: number;
+  status: string;
+}

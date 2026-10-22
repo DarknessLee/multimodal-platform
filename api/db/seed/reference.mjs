@@ -38,6 +38,9 @@ const MENU_PERMS = [
   ['menu:documents', '单证中心', 'document'],
   ['menu:rail', '铁路工作台', 'rail'],
   ['menu:sea', '水路工作台', 'sea'],
+  ['menu:monitor', '监控大屏', 'monitor'],
+  ['menu:alerts', '预警中心', 'alert'],
+  ['menu:capacity', '运力池', 'capacity'],
 ];
 
 const BUTTON_PERMS = [
@@ -48,6 +51,8 @@ const BUTTON_PERMS = [
   ['integration:retry', '重试集成报文'], ['segment:status', '推进运输节点'], ['waybill:sign', '运单签收'], ['bill:settle', '生成账单'],
   ['waybill:notarize', '运单存证'], ['document:upload', '上传单证'], ['document:sign', '单证签章'], ['document:ocr', '单证 OCR'],
   ['container:release', '放箱'], ['container:movement', '箱动态登记'], ['container:return', '还箱'], ['rail:apply', '铁路需求车提报'], ['sea:book', '水路订舱'],
+  ['dispatch:generate', '生成调度方案'], ['dispatch:confirm', '确认调度方案'], ['alert:ack', '预警确认'], ['alert:close', '预警关闭'],
+  ['exception:handle', '异常工单处置'], ['iot:ingest', 'IoT 数据上报'],
 ];
 
 const ROLE_PERMISSIONS = {
@@ -57,15 +62,16 @@ const ROLE_PERMISSIONS = {
     'order:create', 'order:cancel', 'quote:create', 'quote:send', 'quote:accept', 'contract:create', 'contract:send', 'contract:sign', 'customer:create', 'document:upload'],
   MTO: ['menu:dashboard', 'menu:orders', 'menu:quotes', 'menu:contracts', 'menu:customers', 'menu:partners', 'menu:master',
     'menu:dispatch', 'menu:track', 'menu:settlement', 'menu:bills', 'menu:integration', 'menu:audit',
-    'menu:waybills', 'menu:containers', 'menu:documents',
+    'menu:waybills', 'menu:containers', 'menu:documents', 'menu:monitor', 'menu:alerts', 'menu:capacity',
     'order:create', 'order:cancel', 'order:dispatch', 'quote:create', 'quote:send', 'quote:accept',
     'contract:create', 'contract:send', 'price:create', 'customer:create', 'partner:create', 'integration:retry',
     'waybill:notarize', 'document:upload', 'document:sign', 'document:ocr',
-    'container:release', 'container:movement', 'container:return'],
-  CARRIER: ['menu:dashboard', 'menu:orders', 'menu:tasks', 'menu:track', 'menu:waybills', 'menu:containers', 'segment:status', 'container:movement'],
-  RAIL_CARRIER: ['menu:dashboard', 'menu:orders', 'menu:track', 'menu:waybills', 'menu:rail', 'rail:apply'],
-  SEA_CARRIER: ['menu:dashboard', 'menu:orders', 'menu:track', 'menu:waybills', 'menu:sea', 'sea:book'],
-  TERMINAL: ['menu:dashboard', 'menu:terminal', 'menu:track', 'menu:waybills', 'menu:containers', 'segment:status', 'container:movement', 'container:return', 'document:upload'],
+    'container:release', 'container:movement', 'container:return',
+    'dispatch:generate', 'dispatch:confirm', 'alert:ack', 'alert:close', 'exception:handle', 'iot:ingest'],
+  CARRIER: ['menu:dashboard', 'menu:orders', 'menu:tasks', 'menu:track', 'menu:waybills', 'menu:containers', 'menu:monitor', 'menu:alerts', 'segment:status', 'container:movement'],
+  RAIL_CARRIER: ['menu:dashboard', 'menu:orders', 'menu:track', 'menu:waybills', 'menu:rail', 'menu:monitor', 'rail:apply'],
+  SEA_CARRIER: ['menu:dashboard', 'menu:orders', 'menu:track', 'menu:waybills', 'menu:sea', 'menu:monitor', 'sea:book'],
+  TERMINAL: ['menu:dashboard', 'menu:terminal', 'menu:track', 'menu:waybills', 'menu:containers', 'menu:monitor', 'menu:alerts', 'segment:status', 'container:movement', 'container:return', 'document:upload'],
   SETTLEMENT: ['menu:dashboard', 'menu:settlement', 'menu:bills', 'menu:orders', 'menu:waybills', 'menu:documents', 'bill:settle'],
   ADMIN: [...MENU_PERMS.map(([code]) => code), ...BUTTON_PERMS.map(([code]) => code)],
 };

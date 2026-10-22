@@ -1,9 +1,20 @@
--- 多式联运演示版 v1 — Stage 2 schema（33 张表 = v0 7 + Stage1 19 + Stage2 7 新表 + 2 表扩展，utf8mb4 / InnoDB）
+-- 多式联运演示版 v1 — Stage 3 schema（44 张表 = Stage2 33 + 11 张调度/监控/IoT 表，utf8mb4 / InnoDB）
 -- 由 api/db/init.mjs 执行：先 DROP 全部表再建表，保证演示数据可重置。
 -- 约定：JSON 输出 camelCase；表名 orders 避开 MySQL 保留字 order；v0 字段只增不改。
 
 SET NAMES utf8mb4;
 
+DROP TABLE IF EXISTS exception_ticket;
+DROP TABLE IF EXISTS alert;
+DROP TABLE IF EXISTS transfer_window;
+DROP TABLE IF EXISTS dispatch_plan_item;
+DROP TABLE IF EXISTS dispatch_plan;
+DROP TABLE IF EXISTS iot_reading;
+DROP TABLE IF EXISTS iot_device;
+DROP TABLE IF EXISTS geo_fence;
+DROP TABLE IF EXISTS vessel_schedule;
+DROP TABLE IF EXISTS train_schedule;
+DROP TABLE IF EXISTS vehicle;
 DROP TABLE IF EXISTS notarize_record;
 DROP TABLE IF EXISTS depot_storage;
 DROP TABLE IF EXISTS container_movement;
@@ -732,3 +743,238 @@ ALTER TABLE container
   ADD CONSTRAINT fk_container_node FOREIGN KEY (current_node_id) REFERENCES port_station (id),
   ADD CONSTRAINT fk_container_waybill FOREIGN KEY (current_waybill_id) REFERENCES waybill (id),
   ADD CONSTRAINT fk_container_owner FOREIGN KEY (owner_partner_id) REFERENCES partner (id);
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- Stage 3：运力池 / 智能调度 / 预警 / IoT / 电子围栏
+-- ═══════════════════════════════════════════════════════════════════════════
+
+CREATE TABLE vehicle (
+  id                 BIGINT       NOT NULL AUTO_INCREMENT,
+  vehicle_no         VARCHAR(30)  NOT NULL,
+  plate_no           VARCHAR(20)  NOT NULL,
+  vehicle_type       ENUM('TRACTOR','TRAILER','VAN') NOT NULL DEFAULT 'TRACTOR',
+  carrier_partner_id BIGINT       NOT NULL,
+  driver_name        VARCHAR(50)  NOT NULL,
+  driver_phone       VARCHAR(30)  NOT NULL,
+  capacity_t         DECIMAL(6,2) NOT NULL DEFAULT 30.00,
+  container_slots    INT          NOT NULL DEFAULT 1,
+  gps_device_no      VARCHAR(30)  NULL,
+  status             ENUM('IDLE','IN_TASK','MAINTENANCE') NOT NULL DEFAULT 'IDLE',
+  current_node_id    BIGINT       NULL,
+  lng                DECIMAL(9,6) NULL,
+  lat                DECIMAL(9,6) NULL,
+  last_seen_at       DATETIME     NULL,
+  created_at         DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_vehicle_no (vehicle_no),
+  KEY idx_vehicle_status (status),
+  CONSTRAINT fk_vehicle_carrier FOREIGN KEY (carrier_partner_id) REFERENCES partner (id),
+  CONSTRAINT fk_vehicle_node FOREIGN KEY (current_node_id) REFERENCES port_station (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE train_schedule (
+  id                  BIGINT        NOT NULL AUTO_INCREMENT,
+  train_no            VARCHAR(20)   NOT NULL,
+  operator_partner_id BIGINT        NOT NULL,
+  origin_node_id      BIGINT        NOT NULL,
+  dest_node_id        BIGINT        NOT NULL,
+  departure_at        DATETIME      NOT NULL,
+  arrival_at          DATETIME      NOT NULL,
+  capacity_teu        INT           NOT NULL DEFAULT 50,
+  booked_teu          INT           NOT NULL DEFAULT 0,
+  status              ENUM('PLANNED','OPEN','DEPARTED','ARRIVED','CANCELLED') NOT NULL DEFAULT 'PLANNED',
+  price_index         DECIMAL(6,2)  NOT NULL DEFAULT 100.00,
+  created_at          DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_train_no (train_no),
+  KEY idx_train_status (status),
+  CONSTRAINT fk_train_operator FOREIGN KEY (operator_partner_id) REFERENCES partner (id),
+  CONSTRAINT fk_train_origin FOREIGN KEY (origin_node_id) REFERENCES port_station (id),
+  CONSTRAINT fk_train_dest FOREIGN KEY (dest_node_id) REFERENCES port_station (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE vessel_schedule (
+  id                 BIGINT        NOT NULL AUTO_INCREMENT,
+  vessel_name        VARCHAR(50)   NOT NULL,
+  voyage             VARCHAR(20)   NOT NULL,
+  carrier_partner_id BIGINT        NOT NULL,
+  origin_node_id     BIGINT        NOT NULL,
+  dest_node_id       BIGINT        NOT NULL,
+  etd                DATETIME      NOT NULL,
+  eta                DATETIME      NOT NULL,
+  capacity_teu       INT           NOT NULL DEFAULT 500,
+  booked_teu         INT           NOT NULL DEFAULT 0,
+  status             ENUM('PLANNED','OPEN','DEPARTED','ARRIVED','CANCELLED') NOT NULL DEFAULT 'PLANNED',
+  price_index        DECIMAL(6,2)  NOT NULL DEFAULT 100.00,
+  created_at         DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_vessel_voyage (vessel_name, voyage),
+  KEY idx_vessel_status (status),
+  CONSTRAINT fk_vessel_carrier FOREIGN KEY (carrier_partner_id) REFERENCES partner (id),
+  CONSTRAINT fk_vessel_origin FOREIGN KEY (origin_node_id) REFERENCES port_station (id),
+  CONSTRAINT fk_vessel_dest FOREIGN KEY (dest_node_id) REFERENCES port_station (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE dispatch_plan (
+  id           BIGINT        NOT NULL AUTO_INCREMENT,
+  plan_no      VARCHAR(24)   NOT NULL,
+  order_id     BIGINT        NOT NULL,
+  waybill_id   BIGINT        NULL,
+  strategy     ENUM('COST','TIME','BALANCED') NOT NULL,
+  total_cost   DECIMAL(12,2) NOT NULL DEFAULT 0,
+  total_hours  DECIMAL(6,1)  NOT NULL DEFAULT 0,
+  reliability  DECIMAL(5,2)  NOT NULL DEFAULT 0,
+  score        DECIMAL(6,2)  NOT NULL DEFAULT 0,
+  status       ENUM('DRAFT','CONFIRMED','REJECTED') NOT NULL DEFAULT 'DRAFT',
+  summary      VARCHAR(255)  NULL,
+  created_by   BIGINT        NULL,
+  created_at   DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  confirmed_at DATETIME      NULL,
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_plan_no (plan_no),
+  KEY idx_plan_order (order_id),
+  KEY idx_plan_status (status),
+  CONSTRAINT fk_plan_order FOREIGN KEY (order_id) REFERENCES orders (id),
+  CONSTRAINT fk_plan_waybill FOREIGN KEY (waybill_id) REFERENCES waybill (id),
+  CONSTRAINT fk_plan_creator FOREIGN KEY (created_by) REFERENCES user (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE dispatch_plan_item (
+  id                 BIGINT        NOT NULL AUTO_INCREMENT,
+  plan_id            BIGINT        NOT NULL,
+  seq                INT           NOT NULL,
+  mode               ENUM('ROAD','SEA','RAIL') NOT NULL,
+  carrier_partner_id BIGINT        NULL,
+  resource_type      ENUM('VEHICLE','TRAIN','VESSEL') NOT NULL,
+  resource_id        BIGINT        NULL,
+  start_node_id      BIGINT        NOT NULL,
+  end_node_id        BIGINT        NOT NULL,
+  start_at           DATETIME      NOT NULL,
+  end_at             DATETIME      NOT NULL,
+  cost               DECIMAL(12,2) NOT NULL DEFAULT 0,
+  transit_hours      DECIMAL(6,1)  NOT NULL DEFAULT 0,
+  reliability        DECIMAL(5,2)  NOT NULL DEFAULT 0,
+  PRIMARY KEY (id),
+  KEY idx_plan_item_plan (plan_id, seq),
+  CONSTRAINT fk_plan_item_plan FOREIGN KEY (plan_id) REFERENCES dispatch_plan (id) ON DELETE CASCADE,
+  CONSTRAINT fk_plan_item_carrier FOREIGN KEY (carrier_partner_id) REFERENCES partner (id),
+  CONSTRAINT fk_plan_item_start FOREIGN KEY (start_node_id) REFERENCES port_station (id),
+  CONSTRAINT fk_plan_item_end FOREIGN KEY (end_node_id) REFERENCES port_station (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE transfer_window (
+  id           BIGINT       NOT NULL AUTO_INCREMENT,
+  plan_id      BIGINT       NOT NULL,
+  node_id      BIGINT       NOT NULL,
+  from_seq     INT          NOT NULL,
+  to_seq       INT          NOT NULL,
+  arrival_at   DATETIME     NOT NULL,
+  departure_at DATETIME     NOT NULL,
+  wait_hours   DECIMAL(5,1) NOT NULL DEFAULT 0,
+  status       ENUM('OK','TIGHT','MISSED') NOT NULL DEFAULT 'OK',
+  created_at   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  KEY idx_window_plan (plan_id),
+  CONSTRAINT fk_window_plan FOREIGN KEY (plan_id) REFERENCES dispatch_plan (id) ON DELETE CASCADE,
+  CONSTRAINT fk_window_node FOREIGN KEY (node_id) REFERENCES port_station (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE alert (
+  id          BIGINT       NOT NULL AUTO_INCREMENT,
+  alert_no    VARCHAR(24)  NOT NULL,
+  alert_type  ENUM('DELAY','DEVIATION','TEMP_HUMIDITY','STAY','DOOR_OPEN','EXCEPTION') NOT NULL,
+  level       ENUM('INFO','WARN','CRITICAL') NOT NULL DEFAULT 'WARN',
+  waybill_id  BIGINT       NULL,
+  segment_id  BIGINT       NULL,
+  container_id BIGINT      NULL,
+  node_id     BIGINT       NULL,
+  title       VARCHAR(120) NOT NULL,
+  content     VARCHAR(500) NOT NULL,
+  status      ENUM('OPEN','ACK','CLOSED') NOT NULL DEFAULT 'OPEN',
+  occurred_at DATETIME     NOT NULL,
+  acked_by    BIGINT       NULL,
+  acked_at    DATETIME     NULL,
+  closed_at   DATETIME     NULL,
+  created_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_alert_no (alert_no),
+  KEY idx_alert_status (status, occurred_at),
+  KEY idx_alert_waybill (waybill_id),
+  CONSTRAINT fk_alert_waybill FOREIGN KEY (waybill_id) REFERENCES waybill (id),
+  CONSTRAINT fk_alert_segment FOREIGN KEY (segment_id) REFERENCES waybill_segment (id),
+  CONSTRAINT fk_alert_container FOREIGN KEY (container_id) REFERENCES container (id),
+  CONSTRAINT fk_alert_node FOREIGN KEY (node_id) REFERENCES port_station (id),
+  CONSTRAINT fk_alert_user FOREIGN KEY (acked_by) REFERENCES user (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE exception_ticket (
+  id              BIGINT       NOT NULL AUTO_INCREMENT,
+  ticket_no       VARCHAR(24)  NOT NULL,
+  alert_id        BIGINT       NULL,
+  order_id        BIGINT       NULL,
+  waybill_id      BIGINT       NULL,
+  type            VARCHAR(30)  NOT NULL,
+  description     VARCHAR(500) NOT NULL,
+  assignee_user_id BIGINT      NULL,
+  status          ENUM('OPEN','PROCESSING','RESOLVED','CLOSED') NOT NULL DEFAULT 'OPEN',
+  resolution      VARCHAR(500) NULL,
+  created_at      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  resolved_at     DATETIME     NULL,
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_ticket_no (ticket_no),
+  KEY idx_ticket_status (status),
+  CONSTRAINT fk_ticket_alert FOREIGN KEY (alert_id) REFERENCES alert (id),
+  CONSTRAINT fk_ticket_order FOREIGN KEY (order_id) REFERENCES orders (id),
+  CONSTRAINT fk_ticket_waybill FOREIGN KEY (waybill_id) REFERENCES waybill (id),
+  CONSTRAINT fk_ticket_assignee FOREIGN KEY (assignee_user_id) REFERENCES user (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE iot_device (
+  id           BIGINT       NOT NULL AUTO_INCREMENT,
+  device_no    VARCHAR(30)  NOT NULL,
+  device_type  ENUM('GPS','TEMP_HUMIDITY','DOOR','IMPACT') NOT NULL,
+  container_id BIGINT       NULL,
+  vehicle_id   BIGINT       NULL,
+  status       ENUM('ONLINE','OFFLINE') NOT NULL DEFAULT 'ONLINE',
+  last_seen_at DATETIME     NULL,
+  created_at   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_device_no (device_no),
+  KEY idx_device_container (container_id),
+  CONSTRAINT fk_device_container FOREIGN KEY (container_id) REFERENCES container (id),
+  CONSTRAINT fk_device_vehicle FOREIGN KEY (vehicle_id) REFERENCES vehicle (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE iot_reading (
+  id           BIGINT        NOT NULL AUTO_INCREMENT,
+  device_id    BIGINT        NOT NULL,
+  container_id BIGINT        NULL,
+  temperature  DECIMAL(6,2)  NULL,
+  humidity     DECIMAL(6,2)  NULL,
+  door_open    TINYINT(1)    NOT NULL DEFAULT 0,
+  impact_g     DECIMAL(6,2)  NULL,
+  lng          DECIMAL(9,6)  NULL,
+  lat          DECIMAL(9,6)  NULL,
+  reported_at  DATETIME      NOT NULL,
+  created_at   DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  KEY idx_reading_device_time (device_id, reported_at),
+  KEY idx_reading_container (container_id),
+  CONSTRAINT fk_reading_device FOREIGN KEY (device_id) REFERENCES iot_device (id),
+  CONSTRAINT fk_reading_container FOREIGN KEY (container_id) REFERENCES container (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE geo_fence (
+  id         BIGINT        NOT NULL AUTO_INCREMENT,
+  name       VARCHAR(80)   NOT NULL,
+  fence_type ENUM('PORT','STATION','WAREHOUSE','DEPOT') NOT NULL,
+  node_id    BIGINT        NULL,
+  center_lng DECIMAL(9,6)  NOT NULL,
+  center_lat DECIMAL(9,6)  NOT NULL,
+  radius_m   INT           NOT NULL DEFAULT 1000,
+  status     ENUM('ACTIVE','DISABLED') NOT NULL DEFAULT 'ACTIVE',
+  created_at DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  KEY idx_fence_type (fence_type),
+  CONSTRAINT fk_fence_node FOREIGN KEY (node_id) REFERENCES port_station (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

@@ -15,6 +15,11 @@
             人工调度
           </el-button>
         </PermissionGuard>
+        <PermissionGuard permission="dispatch:generate">
+          <el-button v-if="canDispatch" data-testid="plan-entry" @click="goDispatchPlans">
+            智能调度
+          </el-button>
+        </PermissionGuard>
         <el-button v-if="detail?.waybill" data-testid="track-entry" @click="goTrack">运单跟踪</el-button>
         <el-button v-if="detail?.waybill" data-testid="waybill-detail-entry" @click="goWaybillDetail">
           一单制运单
@@ -408,6 +413,10 @@ function goBack(): void {
 
 function goDispatch(): void {
   void router.push(`/orders/${orderId.value}/dispatch`);
+}
+
+function goDispatchPlans(): void {
+  void router.push(`/dispatch/plans?orderId=${orderId.value}`);
 }
 
 function goTrack(): void {

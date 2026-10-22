@@ -46,6 +46,36 @@ const routes: RouteRecordRaw[] = [
         meta: { title: '人工调度', permission: 'menu:dispatch' },
       },
       {
+        path: 'dispatch/plans',
+        name: 'dispatch-plans',
+        component: () => import('../views/DispatchCenterView.vue'),
+        meta: { title: '智能调度中心', permission: 'menu:dispatch' },
+      },
+      {
+        path: 'dispatch/board',
+        name: 'dispatch-board',
+        component: () => import('../views/DispatchBoardView.vue'),
+        meta: { title: '调度看板', permission: 'menu:dispatch' },
+      },
+      {
+        path: 'capacity',
+        name: 'capacity',
+        component: () => import('../views/CapacityView.vue'),
+        meta: { title: '运力池', permission: 'menu:capacity' },
+      },
+      {
+        path: 'monitor',
+        name: 'monitor',
+        component: () => import('../views/MonitorView.vue'),
+        meta: { title: '监控大屏', permission: 'menu:monitor' },
+      },
+      {
+        path: 'alerts',
+        name: 'alerts',
+        component: () => import('../views/AlertsView.vue'),
+        meta: { title: '预警中心', permission: 'menu:alerts' },
+      },
+      {
         path: 'quotes',
         name: 'quotes',
         component: () => import('../views/QuotesView.vue'),

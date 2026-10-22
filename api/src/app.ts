@@ -7,12 +7,16 @@ import { billsRouter } from './routes/bills';
 import { ordersRouter } from './routes/orders';
 import { segmentsRouter } from './routes/segments';
 import { waybillsRouter } from './routes/waybills';
+import { alertsRouter, exceptionsRouter } from './modules/alerts/router';
 import { auditRouter } from './modules/audit/router';
+import { capacityRouter } from './modules/capacity/router';
 import { containersRouter, depotsRouter } from './modules/containers/router';
 import { contractsRouter } from './modules/contract/router';
 import { dashboardRouter } from './modules/dashboard/router';
+import { dispatchRouter } from './modules/dispatch/router';
 import { documentsRouter } from './modules/documents/router';
 import { integrationRouter } from './modules/integration/router';
+import { geoFencesRouter, iotRouter } from './modules/iot/router';
 import {
   containerTypesRouter,
   customersRouter,
@@ -23,6 +27,7 @@ import {
   priceRulesRouter,
   routesRouter,
 } from './modules/master/router';
+import { monitorRouter } from './modules/monitor/router';
 import { notificationsRouter } from './modules/notification/router';
 import { notarizeRouter } from './modules/notarize/router';
 import { quotesRouter } from './modules/quote/router';
@@ -39,7 +44,7 @@ export function createApp() {
 
   // 根路径仅作健康文本，不属于业务接口
   app.get('/', (_req, res) => {
-    res.type('text/plain; charset=utf-8').send('多式联运平台 API 运行中（Stage 2 /api）');
+    res.type('text/plain; charset=utf-8').send('多式联运平台 API 运行中（Stage 3 /api）');
   });
 
   // v0 接口（保持兼容）
@@ -72,6 +77,15 @@ export function createApp() {
   app.use('/api/notarize', requireAuth, notarizeRouter);
   app.use('/api/rail', requireAuth, railRouter);
   app.use('/api/sea', requireAuth, seaRouter);
+
+  // Stage 3 模块：智能调度 / 运力池 / 看板 / 大屏 / 预警 / IoT
+  app.use('/api/dispatch', requireAuth, dispatchRouter);
+  app.use('/api/capacity', requireAuth, capacityRouter);
+  app.use('/api/monitor', requireAuth, monitorRouter);
+  app.use('/api/alerts', requireAuth, alertsRouter);
+  app.use('/api/exceptions', requireAuth, exceptionsRouter);
+  app.use('/api/iot', requireAuth, iotRouter);
+  app.use('/api/geo-fences', requireAuth, geoFencesRouter);
 
   app.use(notFoundHandler);
   app.use(errorHandler);
