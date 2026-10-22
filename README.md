@@ -46,7 +46,7 @@ multimodal-platform/
 └─ package.json
 ```
 
-> 前后端业务代码分别只放在 `api/`、`web/` 两个子目录。
+> 前后端业务代码分别只放在 `web/`、`api/` 两个子目录。
 
 ---
 
