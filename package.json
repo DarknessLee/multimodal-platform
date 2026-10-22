@@ -13,7 +13,7 @@
     "accept:stage3": "node scripts/accept-stage3.mjs",
     "accept:stage4": "node scripts/accept-stage4.mjs",
     "accept:stage5": "node scripts/accept-stage5.mjs",
-    "accept:all": "node scripts/accept.mjs && node scripts/accept-stage2.mjs && node scripts/accept-stage3.mjs && node scripts/accept-stage4.mjs && node scripts/accept-stage5.mjs",
+    "accept:all": "node scripts/accept-v0.mjs && node scripts/accept.mjs && node scripts/accept-stage2.mjs && node scripts/accept-stage3.mjs && node scripts/accept-stage4.mjs && node scripts/accept-stage5.mjs",
     "e2e": "node scripts/e2e-smoke.mjs",
     "e2e:stage2": "node scripts/e2e-stage2.mjs",
     "e2e:stage3": "node scripts/e2e-stage3.mjs",
