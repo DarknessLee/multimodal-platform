@@ -253,6 +253,26 @@
               </span>
               <span v-else class="muted">—</span>
             </div>
+            <div class="related-item">
+              <span class="meta-label">财务</span>
+              <span class="related-links">
+                <router-link
+                  v-if="detail.bill && auth.hasPermission('menu:invoice')"
+                  :to="`/finance/invoices?billId=${detail.bill.id}`"
+                  data-testid="invoice-entry"
+                >
+                  发票
+                </router-link>
+                <router-link
+                  v-if="auth.hasPermission('menu:insurance')"
+                  :to="`/insurance?orderId=${detail.order.id}`"
+                  data-testid="insurance-entry"
+                >
+                  保单
+                </router-link>
+                <span v-if="!detail.bill && !auth.hasPermission('menu:insurance')" class="muted">—</span>
+              </span>
+            </div>
           </div>
 
           <el-empty
@@ -558,6 +578,12 @@ onMounted(load);
   display: flex;
   flex-direction: column;
   gap: 3px;
+}
+
+.related-links {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .track-line {

@@ -13,7 +13,12 @@ export type DocTable =
   | 'document'
   | 'dispatch_plan'
   | 'alert'
-  | 'exception_ticket';
+  | 'exception_ticket'
+  | 'invoice'
+  | 'payment'
+  | 'reconciliation'
+  | 'factoring_application'
+  | 'insurance_policy';
 
 export type DocColumn =
   | 'order_no'
@@ -26,7 +31,12 @@ export type DocColumn =
   | 'doc_no'
   | 'plan_no'
   | 'alert_no'
-  | 'ticket_no';
+  | 'ticket_no'
+  | 'invoice_no'
+  | 'payment_no'
+  | 'recon_no'
+  | 'app_no'
+  | 'policy_no';
 
 export interface DocNoOptions {
   table: DocTable;

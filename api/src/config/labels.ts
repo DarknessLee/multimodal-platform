@@ -4,20 +4,28 @@ import type {
   AlertLevel,
   AlertStatus,
   AlertType,
+  BillItemMode,
+  BillSource,
   BillStatus,
+  BillType,
   CalcMethod,
   ChargeType,
   ContainerMovementType,
   ContainerStatus,
   ContractStatus,
   ContractType,
+  CounterpartyType,
   DeviceStatus,
   DeviceType,
   DocSignStatus,
   DocType,
+  FactoringStatus,
   FenceStatus,
   FenceType,
+  InsuranceStatus,
   IntegrationStatus,
+  InvoiceStatus,
+  InvoiceType,
   NodeType,
   NotificationType,
   OcrStatus,
@@ -25,10 +33,15 @@ import type {
   OrderStatus,
   OrderType,
   PartnerType,
+  PaymentDirection,
+  PaymentMethod,
+  PaymentStatus,
   PlanStatus,
   PlanStrategy,
   Priority,
   QuoteStatus,
+  ReconItemStatus,
+  ReconStatus,
   ResourceType,
   Role,
   ScheduleStatus,
@@ -54,6 +67,8 @@ export const ROLE_LABELS: Record<Role, string> = {
   SEA_CARRIER: '水路承运人',
   TERMINAL: '港站',
   SETTLEMENT: '结算',
+  FINANCE: '金融/保理',
+  INSURANCE: '保险',
   ADMIN: '平台运营',
 };
 
@@ -393,4 +408,86 @@ export const FENCE_TYPE_LABELS: Record<FenceType, string> = {
 export const FENCE_STATUS_LABELS: Record<FenceStatus, string> = {
   ACTIVE: '启用',
   DISABLED: '停用',
+};
+
+// ── Stage 4：结算 v2 / 对账 / 发票 / 支付 / 保理 / 保险 / 经营分析 ────────────
+
+export const BILL_TYPE_LABELS: Record<BillType, string> = {
+  RECEIVABLE: '应收账单',
+  PAYABLE: '应付账单',
+};
+
+export const COUNTERPARTY_TYPE_LABELS: Record<CounterpartyType, string> = {
+  CUSTOMER: '客户',
+  CARRIER: '承运人',
+  FINANCE: '金融机构',
+  INSURER: '保险机构',
+};
+
+export const BILL_SOURCE_LABELS: Record<BillSource, string> = {
+  ORDER: '订单',
+  SEGMENT: '分段',
+};
+
+export const BILL_ITEM_MODE_LABELS: Record<BillItemMode, string> = {
+  ROAD: '公路',
+  SEA: '海运',
+  RAIL: '铁路',
+  PORT: '港杂',
+  OTHER: '其他',
+};
+
+export const RECON_STATUS_LABELS: Record<ReconStatus, string> = {
+  DRAFT: '草稿',
+  SENT: '已发送',
+  CONFIRMED: '已确认',
+  DISPUTED: '有差异',
+};
+
+export const RECON_ITEM_STATUS_LABELS: Record<ReconItemStatus, string> = {
+  MATCH: '一致',
+  DIFF: '差异',
+};
+
+export const INVOICE_TYPE_LABELS: Record<InvoiceType, string> = {
+  VAT_SPECIAL: '增值税专用发票',
+  VAT_NORMAL: '增值税普通发票',
+};
+
+export const INVOICE_STATUS_LABELS: Record<InvoiceStatus, string> = {
+  PENDING: '待开具',
+  ISSUED: '已开具',
+  VOID: '已作废',
+};
+
+export const PAYMENT_DIRECTION_LABELS: Record<PaymentDirection, string> = {
+  IN: '收款',
+  OUT: '付款',
+};
+
+export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
+  BANK_TRANSFER: '银行转账',
+  ONLINE: '在线支付',
+  FACTORING: '保理放款',
+};
+
+export const PAYMENT_STATUS_LABELS: Record<PaymentStatus, string> = {
+  PENDING: '待确认',
+  SUCCESS: '成功',
+  FAILED: '失败',
+};
+
+export const FACTORING_STATUS_LABELS: Record<FactoringStatus, string> = {
+  DRAFT: '草稿',
+  SUBMITTED: '已提交',
+  APPROVED: '已审批',
+  REJECTED: '已拒绝',
+  SETTLED: '已放款',
+};
+
+export const INSURANCE_STATUS_LABELS: Record<InsuranceStatus, string> = {
+  QUOTED: '已报价',
+  ISSUED: '已承保',
+  EXPIRED: '已到期',
+  CLAIMED: '理赔中',
 };

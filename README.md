@@ -3,8 +3,8 @@
 平台化多式联运演示：**货主 / 货代 / MTO / 公路承运人 / 铁路承运人 / 水路承运人 / 港站 / 结算 / 平台运营** 单 Web 端多角色协同；
 一次委托从「询价 → 报价 → 合同 → 下单 → 调度 → 公铁水履约 → 签收 → 分段账单」全流程可点通。
 
-- **当前版本：Stage 3（调度与监控）**：44 张表 / 9 角色 / 智能调度 + 运力池 + 监控大屏 + 预警 + IoT Mock
-- 历史版本：Stage 2（一单制/箱管/单证存证）、Stage 1（平台基座与受理闭环）、v0 演示版 均已保留兼容
+- **当前版本：Stage 4（结算与经营分析）**：53 张表 / 11 角色 / 结算中心 v2 + 对账 / 发票 / 支付 / 保理 / 保险 / 经营分析
+- 历史版本：Stage 3（调度与监控）、Stage 2（一单制/箱管/单证存证）、Stage 1（平台基座与受理闭环）、v0 演示版 均已保留兼容
 - 技术栈：Vue 3 + Vite + TypeScript + Element Plus + ECharts ｜ Node 24 + Express 5 + TypeScript + MySQL 8
 - 全部外部系统 Mock（95306 / 港口 EDI / CA / 银行 / 税务 / GPS），但编码、价格、时效、报文结构按真实业务标准生成
 
@@ -78,6 +78,17 @@ npm run dev       # 同时启动 API(8080) 与前端(5173)
 
 > Stage 1 的受理闭环（询价→报价→合同→下单→调度→签收→账单）继续保留可用。
 
+## Stage 4 演示路径（结算 / 对账 / 发票 / 支付 / 保理 / 分析）
+
+1. `settlement01` 结算中心（`/settlement`）：签收后出账，应收 + 各段承运人应付 + 明细/税额/毛利，账单详情/开票/收款
+2. 对账管理（`/finance/reconciliations`）：按对手方/周期创建对账单 → 发送 → 确认/差异
+3. 发票管理（`/finance/invoices`）：按应收账单开票（FP 号、9% 税额）、作废
+4. 收付款（`/finance/payments`）：登记收付款 → 银行回执确认 → 核销账单
+5. 保理工作台（`/finance/factoring`，`finance01`）：申请 → 审批（手续费）→ 放款
+6. 保险保单（`/insurance`，`insurance01`）：投保 → BX 保单号/保费
+7. 经营分析（`/finance/analytics`）：收入/成本/毛利/毛利率、趋势、客户/模式、AR 账龄
+8. 演示账号：11 个（新增 `finance01` 金融机构、`insurance01` 保险机构）
+
 ## Stage 3 演示路径（智能调度 / 监控 / 预警 / IoT）
 
 1. `mto01` 智能调度中心（`/dispatch/plans`）→ 选择待调度订单 → 生成 COST/TIME/BALANCED 三方案 → 确认调度
@@ -95,15 +106,17 @@ npm run build                 # 后端 tsc --noEmit + 前端 vue-tsc/vite build
 npm run accept                # Stage 1 API 验收：53 项断言
 npm run accept:stage2         # Stage 2 API 验收：33 项断言
 npm run accept:stage3         # Stage 3 API 验收：33 项断言
+npm run accept:stage4         # Stage 4 API 验收：31 项断言
 npm run accept:v0             # v0 基线回归：34 项断言
 npm run e2e                   # Stage 1 UI E2E：13 阶段、16 张截图（本机 Edge，无头）
 npm run e2e:stage2            # Stage 2 UI E2E：6 阶段、6 张截图
 npm run e2e:stage3            # Stage 3 UI E2E：7 阶段、8 张截图
+npm run e2e:stage4            # Stage 4 UI E2E：7 阶段、8 张截图
 ```
 
-- 验收报告：`docs/06-Stage1-验收报告.md`、`docs/09-Stage2-验收报告.md`、`docs/12-Stage3-验收报告.md`
-- 截图：`docs/screenshots/stage1/`、`stage2/`、`stage3/`；v0 截图在 `docs/screenshots/`
-- 契约：`docs/04-Stage1-接口契约.md`、`docs/08-Stage2-接口契约.md`、`docs/11-Stage3-接口契约.md`（v0 基线：`docs/02`）
+- 验收报告：`docs/06-Stage1-验收报告.md`、`docs/09-Stage2-验收报告.md`、`docs/12-Stage3-验收报告.md`、`docs/15-Stage4-验收报告.md`
+- 截图：`docs/screenshots/stage1/`、`stage2/`、`stage3/`、`stage4/`；v0 截图在 `docs/screenshots/`
+- 契约：`docs/04`、`docs/08`、`docs/11`、`docs/14`（v0 基线：`docs/02`）
 
 ## 版本与路线图
 
@@ -112,7 +125,8 @@ npm run e2e:stage3            # Stage 3 UI E2E：7 阶段、8 张截图
   - ✅ **Stage 1 平台基座与受理闭环**（26 表、9 角色、报价/合同/订单 v1、集成与审计 Mock）
   - ✅ **Stage 2 一单制运单 + 箱管 + 单证存证 + 95306/港口 EDI**（33 表、哈希链存证、单证 OCR/签章）
   - ✅ **Stage 3 调度中心 + 可视化大屏 + 异常预警 + IoT Mock**（44 表、三方案推荐、运力池、大屏、预警工单）
-  - ⏭ Stage 4：结算中心 v2（计费引擎/对账/发票/支付/保理）+ 经营分析
+  - ✅ **Stage 4 结算中心 v2 + 对账 / 发票 / 支付 / 保理 / 保险 / 经营分析**（53 表、应收应付、核销、ECharts 分析）
+  - ⏭ Stage 5：集成中心 / 监管 / 运营后台 / 全链路验收
   - Stage 3：调度中心 + 可视化大屏 + 异常预警 + IoT Mock
   - Stage 4：结算中心 v2（计费引擎/对账/发票/支付/保理）+ 经营分析
   - Stage 5：集成中心 + 监管 + 运营后台 + 全链路验收

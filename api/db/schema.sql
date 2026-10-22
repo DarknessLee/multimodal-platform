@@ -1,9 +1,18 @@
--- 多式联运演示版 v1 — Stage 3 schema（44 张表 = Stage2 33 + 11 张调度/监控/IoT 表，utf8mb4 / InnoDB）
+-- 多式联运演示版 v1 — Stage 4 schema（53 张表 = Stage3 44 + 9 张结算/财务表 + bill 扩展，utf8mb4 / InnoDB）
 -- 由 api/db/init.mjs 执行：先 DROP 全部表再建表，保证演示数据可重置。
 -- 约定：JSON 输出 camelCase；表名 orders 避开 MySQL 保留字 order；v0 字段只增不改。
 
 SET NAMES utf8mb4;
 
+DROP TABLE IF EXISTS payment_allocation;
+DROP TABLE IF EXISTS payment;
+DROP TABLE IF EXISTS invoice;
+DROP TABLE IF EXISTS reconciliation_item;
+DROP TABLE IF EXISTS reconciliation;
+DROP TABLE IF EXISTS factoring_application;
+DROP TABLE IF EXISTS insurance_policy;
+DROP TABLE IF EXISTS stat_daily;
+DROP TABLE IF EXISTS bill_item;
 DROP TABLE IF EXISTS exception_ticket;
 DROP TABLE IF EXISTS alert;
 DROP TABLE IF EXISTS transfer_window;
@@ -977,4 +986,208 @@ CREATE TABLE geo_fence (
   PRIMARY KEY (id),
   KEY idx_fence_type (fence_type),
   CONSTRAINT fk_fence_node FOREIGN KEY (node_id) REFERENCES port_station (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- Stage 4：结算中心 v2（账单明细 / 对账 / 发票 / 支付 / 保理 / 保险 / 经营分析）
+-- ═══════════════════════════════════════════════════════════════════════════
+
+ALTER TABLE user
+  MODIFY COLUMN role ENUM('SHIPPER','FORWARDER','MTO','CARRIER','RAIL_CARRIER','SEA_CARRIER','TERMINAL','SETTLEMENT','ADMIN','FINANCE','INSURANCE') NOT NULL;
+
+ALTER TABLE bill
+  DROP INDEX uk_bill_order,
+  ADD COLUMN bill_type ENUM('RECEIVABLE','PAYABLE') NOT NULL DEFAULT 'RECEIVABLE' AFTER bill_no,
+  ADD COLUMN counterparty_type ENUM('CUSTOMER','CARRIER','FINANCE','INSURER') NULL AFTER bill_type,
+  ADD COLUMN counterparty_id BIGINT NULL AFTER counterparty_type,
+  ADD COLUMN source ENUM('ORDER','SEGMENT') NOT NULL DEFAULT 'ORDER' AFTER counterparty_id,
+  ADD COLUMN period CHAR(7) NULL AFTER source,
+  ADD COLUMN due_date DATE NULL AFTER period,
+  ADD COLUMN tax_amount DECIMAL(12,2) NOT NULL DEFAULT 0 AFTER total_amount,
+  ADD COLUMN profit_amount DECIMAL(12,2) NOT NULL DEFAULT 0 AFTER tax_amount,
+  ADD KEY idx_bill_order (order_id),
+  ADD KEY idx_bill_type (bill_type, status);
+
+CREATE TABLE bill_item (
+  id           BIGINT        NOT NULL AUTO_INCREMENT,
+  bill_id      BIGINT        NOT NULL,
+  seq          INT           NOT NULL,
+  mode         ENUM('ROAD','SEA','RAIL','PORT','OTHER') NOT NULL DEFAULT 'OTHER',
+  charge_type  VARCHAR(30)   NOT NULL DEFAULT 'FREIGHT',
+  description  VARCHAR(150)  NOT NULL,
+  quantity     DECIMAL(12,2) NOT NULL DEFAULT 1,
+  unit         VARCHAR(20)   NOT NULL DEFAULT '箱',
+  unit_price   DECIMAL(12,2) NOT NULL DEFAULT 0,
+  amount       DECIMAL(12,2) NOT NULL DEFAULT 0,
+  tax_rate     DECIMAL(5,2)  NOT NULL DEFAULT 9.00,
+  tax_amount   DECIMAL(12,2) NOT NULL DEFAULT 0,
+  cost_amount  DECIMAL(12,2) NOT NULL DEFAULT 0,
+  segment_id   BIGINT        NULL,
+  created_at   DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  KEY idx_bill_item_bill (bill_id, seq),
+  CONSTRAINT fk_bill_item_bill FOREIGN KEY (bill_id) REFERENCES bill (id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE reconciliation (
+  id                 BIGINT        NOT NULL AUTO_INCREMENT,
+  recon_no           VARCHAR(24)   NOT NULL,
+  counterparty_type  ENUM('CUSTOMER','CARRIER','FINANCE') NOT NULL,
+  counterparty_id    BIGINT        NOT NULL,
+  period_start       DATE          NOT NULL,
+  period_end         DATE          NOT NULL,
+  total_amount       DECIMAL(12,2) NOT NULL DEFAULT 0,
+  confirmed_amount   DECIMAL(12,2) NOT NULL DEFAULT 0,
+  difference_amount  DECIMAL(12,2) NOT NULL DEFAULT 0,
+  status             ENUM('DRAFT','SENT','CONFIRMED','DISPUTED') NOT NULL DEFAULT 'DRAFT',
+  sent_at            DATETIME      NULL,
+  confirmed_at       DATETIME      NULL,
+  created_by         BIGINT        NULL,
+  created_at         DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_recon_no (recon_no),
+  KEY idx_recon_status (status),
+  CONSTRAINT fk_recon_creator FOREIGN KEY (created_by) REFERENCES user (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE reconciliation_item (
+  id                 BIGINT        NOT NULL AUTO_INCREMENT,
+  recon_id           BIGINT        NOT NULL,
+  bill_id            BIGINT        NOT NULL,
+  amount             DECIMAL(12,2) NOT NULL DEFAULT 0,
+  confirmed_amount   DECIMAL(12,2) NOT NULL DEFAULT 0,
+  difference_reason  VARCHAR(255)  NULL,
+  status             ENUM('MATCH','DIFF') NOT NULL DEFAULT 'MATCH',
+  PRIMARY KEY (id),
+  KEY idx_recon_item_recon (recon_id),
+  CONSTRAINT fk_recon_item_recon FOREIGN KEY (recon_id) REFERENCES reconciliation (id) ON DELETE CASCADE,
+  CONSTRAINT fk_recon_item_bill FOREIGN KEY (bill_id) REFERENCES bill (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE invoice (
+  id            BIGINT        NOT NULL AUTO_INCREMENT,
+  invoice_no    VARCHAR(24)   NOT NULL,
+  invoice_type  ENUM('VAT_SPECIAL','VAT_NORMAL') NOT NULL DEFAULT 'VAT_SPECIAL',
+  bill_id       BIGINT        NOT NULL,
+  order_id      BIGINT        NULL,
+  buyer_name    VARCHAR(100)  NOT NULL,
+  buyer_tax_no  CHAR(18)      NULL,
+  seller_name   VARCHAR(100)  NOT NULL,
+  seller_tax_no CHAR(18)      NULL,
+  amount        DECIMAL(12,2) NOT NULL DEFAULT 0,
+  tax_rate      DECIMAL(5,2)  NOT NULL DEFAULT 9.00,
+  tax_amount    DECIMAL(12,2) NOT NULL DEFAULT 0,
+  total_amount  DECIMAL(12,2) NOT NULL DEFAULT 0,
+  status        ENUM('PENDING','ISSUED','VOID') NOT NULL DEFAULT 'ISSUED',
+  issued_at     DATETIME      NULL,
+  voided_at     DATETIME      NULL,
+  created_by    BIGINT        NULL,
+  created_at    DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_invoice_no (invoice_no),
+  KEY idx_invoice_bill (bill_id),
+  CONSTRAINT fk_invoice_bill FOREIGN KEY (bill_id) REFERENCES bill (id),
+  CONSTRAINT fk_invoice_order FOREIGN KEY (order_id) REFERENCES orders (id),
+  CONSTRAINT fk_invoice_creator FOREIGN KEY (created_by) REFERENCES user (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE payment (
+  id                BIGINT        NOT NULL AUTO_INCREMENT,
+  payment_no        VARCHAR(24)   NOT NULL,
+  direction         ENUM('IN','OUT') NOT NULL,
+  counterparty_type ENUM('CUSTOMER','CARRIER','FINANCE','INSURER') NOT NULL,
+  counterparty_id   BIGINT        NULL,
+  bill_id           BIGINT        NULL,
+  amount            DECIMAL(12,2) NOT NULL DEFAULT 0,
+  method            ENUM('BANK_TRANSFER','ONLINE','FACTORING') NOT NULL DEFAULT 'BANK_TRANSFER',
+  status            ENUM('PENDING','SUCCESS','FAILED') NOT NULL DEFAULT 'PENDING',
+  bank_serial       VARCHAR(40)   NULL,
+  paid_at           DATETIME      NULL,
+  remark            VARCHAR(255)  NULL,
+  created_by        BIGINT        NULL,
+  created_at        DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_payment_no (payment_no),
+  KEY idx_payment_status (status),
+  KEY idx_payment_bill (bill_id),
+  CONSTRAINT fk_payment_bill FOREIGN KEY (bill_id) REFERENCES bill (id),
+  CONSTRAINT fk_payment_creator FOREIGN KEY (created_by) REFERENCES user (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE payment_allocation (
+  id         BIGINT        NOT NULL AUTO_INCREMENT,
+  payment_id BIGINT        NOT NULL,
+  bill_id    BIGINT        NOT NULL,
+  amount     DECIMAL(12,2) NOT NULL DEFAULT 0,
+  created_at DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  KEY idx_alloc_payment (payment_id),
+  KEY idx_alloc_bill (bill_id),
+  CONSTRAINT fk_alloc_payment FOREIGN KEY (payment_id) REFERENCES payment (id) ON DELETE CASCADE,
+  CONSTRAINT fk_alloc_bill FOREIGN KEY (bill_id) REFERENCES bill (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE factoring_application (
+  id                   BIGINT        NOT NULL AUTO_INCREMENT,
+  app_no               VARCHAR(24)   NOT NULL,
+  order_id             BIGINT        NULL,
+  bill_id              BIGINT        NOT NULL,
+  applicant_customer_id BIGINT       NOT NULL,
+  finance_partner_id   BIGINT        NOT NULL,
+  amount               DECIMAL(12,2) NOT NULL DEFAULT 0,
+  discount_rate        DECIMAL(5,2)  NOT NULL DEFAULT 0,
+  fee                  DECIMAL(12,2) NOT NULL DEFAULT 0,
+  status               ENUM('DRAFT','SUBMITTED','APPROVED','REJECTED','SETTLED') NOT NULL DEFAULT 'SUBMITTED',
+  applied_at           DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  approved_at          DATETIME      NULL,
+  settled_at           DATETIME      NULL,
+  created_by           BIGINT        NULL,
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_factoring_no (app_no),
+  KEY idx_factoring_status (status),
+  CONSTRAINT fk_factoring_bill FOREIGN KEY (bill_id) REFERENCES bill (id),
+  CONSTRAINT fk_factoring_order FOREIGN KEY (order_id) REFERENCES orders (id),
+  CONSTRAINT fk_factoring_customer FOREIGN KEY (applicant_customer_id) REFERENCES customer (id),
+  CONSTRAINT fk_factoring_finance FOREIGN KEY (finance_partner_id) REFERENCES partner (id),
+  CONSTRAINT fk_factoring_creator FOREIGN KEY (created_by) REFERENCES user (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE insurance_policy (
+  id                 BIGINT        NOT NULL AUTO_INCREMENT,
+  policy_no          VARCHAR(24)   NOT NULL,
+  order_id           BIGINT        NOT NULL,
+  waybill_id         BIGINT        NULL,
+  insurer_partner_id BIGINT        NOT NULL,
+  insured_amount     DECIMAL(14,2) NOT NULL DEFAULT 0,
+  rate               DECIMAL(6,4)  NOT NULL DEFAULT 0.1000,
+  premium            DECIMAL(12,2) NOT NULL DEFAULT 0,
+  status             ENUM('QUOTED','ISSUED','EXPIRED','CLAIMED') NOT NULL DEFAULT 'ISSUED',
+  effective_from     DATETIME      NOT NULL,
+  effective_to       DATETIME      NOT NULL,
+  created_by         BIGINT        NULL,
+  created_at         DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_policy_no (policy_no),
+  KEY idx_policy_order (order_id),
+  CONSTRAINT fk_policy_order FOREIGN KEY (order_id) REFERENCES orders (id),
+  CONSTRAINT fk_policy_waybill FOREIGN KEY (waybill_id) REFERENCES waybill (id),
+  CONSTRAINT fk_policy_insurer FOREIGN KEY (insurer_partner_id) REFERENCES partner (id),
+  CONSTRAINT fk_policy_creator FOREIGN KEY (created_by) REFERENCES user (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE stat_daily (
+  id          BIGINT        NOT NULL AUTO_INCREMENT,
+  stat_date   DATE          NOT NULL,
+  customer_id BIGINT        NULL,
+  mode        ENUM('ROAD','SEA','RAIL','ALL') NOT NULL DEFAULT 'ALL',
+  order_count INT           NOT NULL DEFAULT 0,
+  revenue     DECIMAL(14,2) NOT NULL DEFAULT 0,
+  cost        DECIMAL(14,2) NOT NULL DEFAULT 0,
+  profit      DECIMAL(14,2) NOT NULL DEFAULT 0,
+  margin      DECIMAL(6,2)  NOT NULL DEFAULT 0,
+  created_at  DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_stat_day (stat_date, customer_id, mode),
+  KEY idx_stat_date (stat_date),
+  CONSTRAINT fk_stat_customer FOREIGN KEY (customer_id) REFERENCES customer (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

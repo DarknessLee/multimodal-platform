@@ -75,7 +75,23 @@ export const DEMO_ACCOUNTS: DemoAccount[] = [
     role: 'SETTLEMENT',
     roleLabel: '结算',
     displayName: '联运结算中心',
-    duty: '账单生成、结算工作台',
+    duty: '账单生成、对账、开票、收付款',
+  },
+  {
+    username: 'finance01',
+    password: 'demo123',
+    role: 'FINANCE',
+    roleLabel: '金融机构',
+    displayName: '中国银行（金融机构）',
+    duty: '支付回执、对账确认、保理审批',
+  },
+  {
+    username: 'insurance01',
+    password: 'demo123',
+    role: 'INSURANCE',
+    roleLabel: '保险机构',
+    displayName: '人保财险（保险机构）',
+    duty: '货运险投保与保单管理',
   },
   {
     username: 'admin01',
@@ -97,6 +113,8 @@ export const ROLE_LABELS: Record<string, string> = {
   SEA_CARRIER: '水路承运人',
   TERMINAL: '港站',
   SETTLEMENT: '结算',
+  FINANCE: '金融机构',
+  INSURANCE: '保险机构',
   ADMIN: '平台运营',
 };
 
@@ -125,6 +143,12 @@ const MENU_CODES = [
   'menu:monitor',
   'menu:alerts',
   'menu:capacity',
+  'menu:reconciliation',
+  'menu:invoice',
+  'menu:payment',
+  'menu:factoring',
+  'menu:insurance',
+  'menu:analytics',
 ];
 
 const BUTTON_CODES = [
@@ -159,6 +183,19 @@ const BUTTON_CODES = [
   'alert:close',
   'exception:handle',
   'iot:ingest',
+  'bill:issue-invoice',
+  'invoice:issue',
+  'invoice:void',
+  'payment:record',
+  'payment:confirm',
+  'recon:create',
+  'recon:send',
+  'recon:confirm',
+  'recon:dispute',
+  'factoring:apply',
+  'factoring:approve',
+  'insurance:create',
+  'analytics:read',
 ];
 
 export const ROLE_FALLBACK_PERMISSIONS: Record<string, string[]> = {
@@ -239,12 +276,26 @@ export const ROLE_FALLBACK_PERMISSIONS: Record<string, string[]> = {
     'menu:monitor',
     'menu:alerts',
     'menu:capacity',
+    'menu:reconciliation',
+    'menu:invoice',
+    'menu:payment',
+    'menu:analytics',
     'dispatch:generate',
     'dispatch:confirm',
     'alert:ack',
     'alert:close',
     'exception:handle',
     'iot:ingest',
+    'bill:issue-invoice',
+    'invoice:issue',
+    'invoice:void',
+    'payment:record',
+    'payment:confirm',
+    'recon:create',
+    'recon:send',
+    'recon:confirm',
+    'recon:dispute',
+    'analytics:read',
   ],
   CARRIER: [
     'menu:dashboard',
@@ -296,7 +347,48 @@ export const ROLE_FALLBACK_PERMISSIONS: Record<string, string[]> = {
     'menu:orders',
     'menu:waybills',
     'menu:documents',
+    'menu:reconciliation',
+    'menu:invoice',
+    'menu:payment',
+    'menu:analytics',
     'bill:settle',
+    'bill:issue-invoice',
+    'invoice:issue',
+    'invoice:void',
+    'payment:record',
+    'payment:confirm',
+    'recon:create',
+    'recon:send',
+    'recon:confirm',
+    'recon:dispute',
+    'analytics:read',
+  ],
+  FINANCE: [
+    'menu:dashboard',
+    'menu:orders',
+    'menu:waybills',
+    'menu:documents',
+    'menu:settlement',
+    'menu:bills',
+    'menu:reconciliation',
+    'menu:invoice',
+    'menu:payment',
+    'menu:factoring',
+    'menu:analytics',
+    'payment:record',
+    'payment:confirm',
+    'recon:confirm',
+    'recon:dispute',
+    'factoring:apply',
+    'factoring:approve',
+    'analytics:read',
+  ],
+  INSURANCE: [
+    'menu:dashboard',
+    'menu:orders',
+    'menu:waybills',
+    'menu:insurance',
+    'insurance:create',
   ],
   ADMIN: [...MENU_CODES, ...BUTTON_CODES],
 };
@@ -333,6 +425,12 @@ export const MENU_DEFS: MenuDef[] = [
   { code: 'menu:bills', label: '账单中心', path: '/orders?view=bills', testid: 'nav-bills', group: '履约执行' },
   { code: 'menu:monitor', label: '监控大屏', path: '/monitor', testid: 'nav-monitor', group: '监控预警' },
   { code: 'menu:alerts', label: '预警中心', path: '/alerts', testid: 'nav-alerts', group: '监控预警' },
+  { code: 'menu:reconciliation', label: '对账管理', path: '/finance/reconciliations', testid: 'nav-reconciliation', group: '财务结算' },
+  { code: 'menu:invoice', label: '发票管理', path: '/finance/invoices', testid: 'nav-invoice', group: '财务结算' },
+  { code: 'menu:payment', label: '收付款', path: '/finance/payments', testid: 'nav-payment', group: '财务结算' },
+  { code: 'menu:factoring', label: '保理工作台', path: '/finance/factoring', testid: 'nav-factoring', group: '财务结算' },
+  { code: 'menu:analytics', label: '经营分析', path: '/finance/analytics', testid: 'nav-analytics', group: '财务结算' },
+  { code: 'menu:insurance', label: '保险保单', path: '/insurance', testid: 'nav-insurance', group: '财务结算' },
   { code: 'menu:integration', label: '集成中心', path: '/integration/messages', testid: 'nav-integration', group: '平台治理' },
   { code: 'menu:audit', label: '审计日志', path: '/audit/logs', testid: 'nav-audit', group: '平台治理' },
 ];
@@ -1007,4 +1105,225 @@ export function planStrategyTagType(strategy?: string | null): 'primary' | 'succ
   if (strategy === 'COST') return 'success';
   if (strategy === 'TIME') return 'warning';
   return 'primary';
+}
+
+// ───────────────────────────── Stage 4：财务结算 / 对账 / 发票 / 支付 / 保理 / 保险 / 分析 ─────────────────────────────
+
+export const BILL_TYPE_LABELS: Record<string, string> = {
+  RECEIVABLE: '应收账单',
+  PAYABLE: '应付账单',
+};
+
+export const BILL_TYPE_OPTIONS = Object.entries(BILL_TYPE_LABELS).map(([value, label]) => ({ value, label }));
+
+export const BILL_STATUS_FILTER_LABELS: Record<string, string> = {
+  ISSUED: '已出账',
+  PAID: '已支付',
+  PARTIAL: '部分核销',
+  DRAFT: '草稿',
+  VOID: '已作废',
+};
+
+export const BILL_STATUS_FILTER_OPTIONS = Object.entries(BILL_STATUS_FILTER_LABELS).map(([value, label]) => ({
+  value,
+  label,
+}));
+
+export const RECON_STATUS_LABELS: Record<string, string> = {
+  DRAFT: '草稿',
+  SENT: '已发送',
+  CONFIRMED: '已确认',
+  DISPUTED: '有差异',
+};
+
+export const RECON_STATUS_OPTIONS = Object.entries(RECON_STATUS_LABELS).map(([value, label]) => ({ value, label }));
+
+export const INVOICE_TYPE_LABELS: Record<string, string> = {
+  VAT_SPECIAL: '增值税专用发票',
+  VAT_NORMAL: '增值税普通发票',
+};
+
+export const INVOICE_TYPE_OPTIONS = Object.entries(INVOICE_TYPE_LABELS).map(([value, label]) => ({
+  value,
+  label,
+}));
+
+export const INVOICE_STATUS_LABELS: Record<string, string> = {
+  PENDING: '待开具',
+  ISSUED: '已开具',
+  VOID: '已作废',
+};
+
+export const INVOICE_STATUS_OPTIONS = Object.entries(INVOICE_STATUS_LABELS).map(([value, label]) => ({
+  value,
+  label,
+}));
+
+export const PAYMENT_DIRECTION_LABELS: Record<string, string> = {
+  IN: '收款',
+  OUT: '付款',
+};
+
+export const PAYMENT_DIRECTION_OPTIONS = Object.entries(PAYMENT_DIRECTION_LABELS).map(([value, label]) => ({
+  value,
+  label,
+}));
+
+export const PAYMENT_STATUS_LABELS: Record<string, string> = {
+  PENDING: '待确认',
+  SUCCESS: '成功',
+  FAILED: '失败',
+};
+
+export const PAYMENT_STATUS_OPTIONS = Object.entries(PAYMENT_STATUS_LABELS).map(([value, label]) => ({
+  value,
+  label,
+}));
+
+export const PAYMENT_METHOD_LABELS: Record<string, string> = {
+  BANK_TRANSFER: '银行转账',
+  ONLINE: '在线支付',
+  FACTORING: '保理放款',
+};
+
+export const PAYMENT_METHOD_OPTIONS = Object.entries(PAYMENT_METHOD_LABELS).map(([value, label]) => ({
+  value,
+  label,
+}));
+
+export const FACTORING_STATUS_LABELS: Record<string, string> = {
+  DRAFT: '草稿',
+  SUBMITTED: '已提交',
+  APPROVED: '已审批',
+  REJECTED: '已拒绝',
+  SETTLED: '已放款',
+};
+
+export const FACTORING_STATUS_OPTIONS = Object.entries(FACTORING_STATUS_LABELS).map(([value, label]) => ({
+  value,
+  label,
+}));
+
+export const INSURANCE_STATUS_LABELS: Record<string, string> = {
+  QUOTED: '已报价',
+  ISSUED: '已承保',
+  EXPIRED: '已过期',
+  CLAIMED: '理赔中',
+};
+
+export const INSURANCE_STATUS_OPTIONS = Object.entries(INSURANCE_STATUS_LABELS).map(([value, label]) => ({
+  value,
+  label,
+}));
+
+export const FINANCE_CHARGE_TYPE_LABELS: Record<string, string> = {
+  FREIGHT: '运费',
+  SURCHARGE: '附加费',
+  STORAGE: '堆存费',
+  HANDLING: '装卸费',
+  TAX: '税额',
+  OTHER: '其他',
+};
+
+export const COUNTERPARTY_TYPE_LABELS: Record<string, string> = {
+  CUSTOMER: '客户',
+  CARRIER: '承运商',
+  FINANCE: '金融机构',
+  INSURER: '保险公司',
+};
+
+export function billTypeLabel(type?: string | null): string {
+  if (!type) return '—';
+  return BILL_TYPE_LABELS[type] ?? type;
+}
+
+export function reconStatusLabel(status?: string | null): string {
+  if (!status) return '—';
+  return RECON_STATUS_LABELS[status] ?? status;
+}
+
+export function invoiceTypeLabel(type?: string | null): string {
+  if (!type) return '—';
+  return INVOICE_TYPE_LABELS[type] ?? type;
+}
+
+export function invoiceStatusLabel(status?: string | null): string {
+  if (!status) return '—';
+  return INVOICE_STATUS_LABELS[status] ?? status;
+}
+
+export function paymentDirectionLabel(direction?: string | null): string {
+  if (!direction) return '—';
+  return PAYMENT_DIRECTION_LABELS[direction] ?? direction;
+}
+
+export function paymentStatusLabel(status?: string | null): string {
+  if (!status) return '—';
+  return PAYMENT_STATUS_LABELS[status] ?? status;
+}
+
+export function paymentMethodLabel(method?: string | null): string {
+  if (!method) return '—';
+  return PAYMENT_METHOD_LABELS[method] ?? method;
+}
+
+export function factoringStatusLabel(status?: string | null): string {
+  if (!status) return '—';
+  return FACTORING_STATUS_LABELS[status] ?? status;
+}
+
+export function insuranceStatusLabel(status?: string | null): string {
+  if (!status) return '—';
+  return INSURANCE_STATUS_LABELS[status] ?? status;
+}
+
+export function financeChargeTypeLabel(type?: string | null): string {
+  if (!type) return '—';
+  return FINANCE_CHARGE_TYPE_LABELS[type] ?? type;
+}
+
+export function counterpartyTypeLabel(type?: string | null): string {
+  if (!type) return '—';
+  return COUNTERPARTY_TYPE_LABELS[type] ?? type;
+}
+
+export function reconStatusTagType(status?: string | null): 'info' | 'primary' | 'success' | 'warning' | 'danger' {
+  if (status === 'CONFIRMED') return 'success';
+  if (status === 'DISPUTED') return 'danger';
+  if (status === 'SENT') return 'primary';
+  return 'info';
+}
+
+export function invoiceStatusTagType(status?: string | null): 'info' | 'success' | 'danger' {
+  if (status === 'ISSUED') return 'success';
+  if (status === 'VOID') return 'danger';
+  return 'info';
+}
+
+export function paymentStatusTagType(status?: string | null): 'success' | 'warning' | 'danger' {
+  if (status === 'SUCCESS') return 'success';
+  if (status === 'FAILED') return 'danger';
+  return 'warning';
+}
+
+export function factoringStatusTagType(status?: string | null): 'info' | 'primary' | 'success' | 'warning' | 'danger' {
+  if (status === 'SETTLED') return 'success';
+  if (status === 'APPROVED') return 'primary';
+  if (status === 'REJECTED') return 'danger';
+  if (status === 'SUBMITTED') return 'warning';
+  return 'info';
+}
+
+export function insuranceStatusTagType(status?: string | null): 'info' | 'primary' | 'success' | 'warning' | 'danger' {
+  if (status === 'ISSUED') return 'success';
+  if (status === 'CLAIMED') return 'warning';
+  if (status === 'EXPIRED') return 'info';
+  return 'primary';
+}
+
+export function billStatusTagType(status?: string | null): 'info' | 'primary' | 'success' | 'warning' | 'danger' {
+  if (status === 'PAID') return 'success';
+  if (status === 'ISSUED') return 'primary';
+  if (status === 'VOID') return 'danger';
+  return 'info';
 }

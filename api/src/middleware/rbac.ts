@@ -77,3 +77,27 @@ export const attachPermissions: RequestHandler = (req, _res, next) => {
     })
     .catch(next);
 };
+
+/** 权限码 或 指定角色（用于契约中“承运人可确认对账单”等没有按钮权限码的场景） */
+export function requirePermissionOrRole(codes: string[], roles: Role[]): RequestHandler {
+  return (req, _res, next) => {
+    if (!req.user) {
+      next(new ApiError(40101, '未登录或登录已过期'));
+      return;
+    }
+    if (roles.includes(req.user.role)) {
+      next();
+      return;
+    }
+    loadPermissions(req.user.role)
+      .then((permissions) => {
+        req.permissions = permissions;
+        if (codes.length > 0 && !codes.some((code) => permissions.includes(code))) {
+          next(new ApiError(40301, '无权限执行该操作'));
+          return;
+        }
+        next();
+      })
+      .catch(next);
+  };
+}

@@ -58,15 +58,21 @@ const ORDER_LIST_SELECT = `
          o.origin, o.destination, o.required_pickup_date, o.created_at, o.order_type, o.source, o.priority,
          o.total_amount, o.currency, u.display_name AS shipper_name,
          c.name AS customer_name, ct.contract_no, q.quote_no,
-         w.id AS waybill_id, w.waybill_no, w.status AS waybill_status,
-         b.id AS bill_id, b.bill_no
+         (SELECT w.id FROM waybill w WHERE w.order_id = o.id
+           ORDER BY (w.waybill_type = 'MASTER') DESC, w.id ASC LIMIT 1) AS waybill_id,
+         (SELECT w.waybill_no FROM waybill w WHERE w.order_id = o.id
+           ORDER BY (w.waybill_type = 'MASTER') DESC, w.id ASC LIMIT 1) AS waybill_no,
+         (SELECT w.status FROM waybill w WHERE w.order_id = o.id
+           ORDER BY (w.waybill_type = 'MASTER') DESC, w.id ASC LIMIT 1) AS waybill_status,
+         (SELECT b.id FROM bill b WHERE b.order_id = o.id
+           ORDER BY (b.bill_type = 'RECEIVABLE') DESC, b.id ASC LIMIT 1) AS bill_id,
+         (SELECT b.bill_no FROM bill b WHERE b.order_id = o.id
+           ORDER BY (b.bill_type = 'RECEIVABLE') DESC, b.id ASC LIMIT 1) AS bill_no
     FROM orders o
     JOIN user u ON u.id = o.shipper_id
     LEFT JOIN customer c ON c.id = o.customer_id
     LEFT JOIN contract ct ON ct.id = o.contract_id
-    LEFT JOIN quote q ON q.id = o.quote_id
-    LEFT JOIN waybill w ON w.order_id = o.id
-    LEFT JOIN bill b ON b.order_id = o.id`;
+    LEFT JOIN quote q ON q.id = o.quote_id`;
 
 export interface OrderListFilters {
   status?: OrderStatus;
@@ -174,7 +180,10 @@ export async function getOrderDetail(orderId: number, user: AuthUser) {
     );
   }
 
-  const billRow = await queryOne<BillRow>('SELECT * FROM bill WHERE order_id = ? LIMIT 1', [orderId]);
+  const billRow = await queryOne<BillRow>(
+    "SELECT * FROM bill WHERE order_id = ? ORDER BY (bill_type = 'RECEIVABLE') DESC, id ASC LIMIT 1",
+    [orderId],
+  );
   const contractRow = orderRow.contract_id
     ? await queryOne<ContractRow>('SELECT * FROM contract WHERE id = ?', [orderRow.contract_id])
     : null;

@@ -130,6 +130,42 @@ const routes: RouteRecordRaw[] = [
         meta: { title: '审计日志', permission: 'menu:audit' },
       },
       {
+        path: 'finance/reconciliations',
+        name: 'finance-reconciliations',
+        component: () => import('../views/ReconciliationsView.vue'),
+        meta: { title: '对账管理', permission: 'menu:reconciliation' },
+      },
+      {
+        path: 'finance/invoices',
+        name: 'finance-invoices',
+        component: () => import('../views/InvoicesView.vue'),
+        meta: { title: '发票管理', permission: 'menu:invoice' },
+      },
+      {
+        path: 'finance/payments',
+        name: 'finance-payments',
+        component: () => import('../views/PaymentsView.vue'),
+        meta: { title: '收付款', permission: 'menu:payment' },
+      },
+      {
+        path: 'finance/factoring',
+        name: 'finance-factoring',
+        component: () => import('../views/FactoringView.vue'),
+        meta: { title: '保理工作台', permission: 'menu:factoring' },
+      },
+      {
+        path: 'finance/analytics',
+        name: 'finance-analytics',
+        component: () => import('../views/AnalyticsView.vue'),
+        meta: { title: '经营分析', permission: 'menu:analytics' },
+      },
+      {
+        path: 'insurance',
+        name: 'insurance',
+        component: () => import('../views/InsuranceView.vue'),
+        meta: { title: '保险保单', permission: 'menu:insurance' },
+      },
+      {
         path: 'tasks',
         name: 'tasks',
         component: () => import('../views/TasksView.vue'),

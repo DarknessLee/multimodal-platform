@@ -10,6 +10,8 @@ export type Role =
   | 'SEA_CARRIER'
   | 'TERMINAL'
   | 'SETTLEMENT'
+  | 'FINANCE'
+  | 'INSURANCE'
   | 'ADMIN';
 
 export type OrderStatus =
@@ -1352,4 +1354,256 @@ export interface GeoFence {
   centerLat: number;
   radiusM: number;
   status: string;
+}
+
+// ───────────────────────────── Stage 4：结算 v2 / 对账 / 发票 / 支付 / 保理 / 保险 / 经营分析 ─────────────────────────────
+
+export interface Counterparty {
+  type: string;
+  id: number | null;
+  name: string;
+}
+
+export interface BillListItem {
+  id: number;
+  billNo: string;
+  billType: string;
+  billTypeLabel: string;
+  counterparty: Counterparty | null;
+  orderId: number | null;
+  orderNo: string | null;
+  period: string | null;
+  totalAmount: number;
+  taxAmount: number;
+  profitAmount: number;
+  dueDate: string | null;
+  status: string;
+  statusLabel: string;
+  issuedAt: string | null;
+}
+
+export interface BillItemDetail {
+  seq: number;
+  mode: string;
+  modeLabel: string;
+  chargeType: string;
+  description: string;
+  quantity: number;
+  unit: string;
+  unitPrice: number;
+  amount: number;
+  taxRate: number;
+  taxAmount: number;
+  costAmount: number;
+}
+
+export interface InvoiceBrief {
+  id: number;
+  invoiceNo: string;
+  status: string;
+  totalAmount: number;
+}
+
+export interface PaymentBrief {
+  id: number;
+  paymentNo: string;
+  amount: number;
+  status: string;
+  paidAt: string | null;
+}
+
+export interface BillDetailResult {
+  bill: BillListItem;
+  order: { id: number; orderNo: string } | null;
+  items: BillItemDetail[];
+  invoice: InvoiceBrief | null;
+  payments: PaymentBrief[];
+  reconciliation: { id: number; reconNo: string; status: string } | null;
+}
+
+export interface InvoiceListItem {
+  id: number;
+  invoiceNo: string;
+  invoiceType: string;
+  invoiceTypeLabel: string;
+  billId: number;
+  billNo: string;
+  buyerName: string;
+  sellerName: string;
+  amount: number;
+  taxRate: number;
+  taxAmount: number;
+  totalAmount: number;
+  status: string;
+  statusLabel: string;
+  issuedAt: string | null;
+}
+
+export interface InvoiceDetail extends InvoiceListItem {
+  buyerTaxNo?: string | null;
+  sellerTaxNo?: string | null;
+  orderId?: number | null;
+  voidedAt?: string | null;
+}
+
+export interface CreateInvoicePayload {
+  billId: number;
+  invoiceType: string;
+  title: string;
+  taxNo: string;
+}
+
+export interface PaymentListItem {
+  id: number;
+  paymentNo: string;
+  direction: string;
+  counterparty: Counterparty | null;
+  billNo: string | null;
+  amount: number;
+  method: string;
+  status: string;
+  statusLabel: string;
+  bankSerial: string | null;
+  paidAt: string | null;
+  createdAt: string;
+}
+
+export interface CreatePaymentPayload {
+  direction: string;
+  billId: number;
+  amount: number;
+  method: string;
+  payerName?: string;
+  remark?: string;
+}
+
+export interface PaymentConfirmResult {
+  payment: PaymentListItem;
+  allocation: { paymentId: number; billId: number; amount: number };
+  bill: BillListItem;
+}
+
+export interface ReconciliationListItem {
+  id: number;
+  reconNo: string;
+  counterparty: Counterparty | null;
+  periodStart: string;
+  periodEnd: string;
+  totalAmount: number;
+  confirmedAmount: number;
+  differenceAmount: number;
+  status: string;
+  statusLabel: string;
+  sentAt: string | null;
+  confirmedAt: string | null;
+}
+
+export interface ReconciliationItemDetail {
+  billId: number;
+  billNo: string;
+  amount: number;
+  confirmedAmount: number;
+  differenceReason: string | null;
+  status: string;
+  statusLabel?: string;
+}
+
+export interface ReconciliationDetail {
+  recon: ReconciliationListItem;
+  items: ReconciliationItemDetail[];
+}
+
+export interface FactoringApplication {
+  id: number;
+  appNo: string;
+  orderNo: string | null;
+  billNo: string | null;
+  applicantName: string;
+  financePartnerName: string;
+  amount: number;
+  discountRate: number;
+  fee: number;
+  status: string;
+  statusLabel: string;
+  appliedAt: string;
+  approvedAt: string | null;
+}
+
+export interface InsurancePolicy {
+  id: number;
+  policyNo: string;
+  orderNo: string | null;
+  waybillNo: string | null;
+  insurerName: string;
+  insuredAmount: number;
+  rate: number;
+  premium: number;
+  status: string;
+  statusLabel: string;
+  effectiveFrom: string | null;
+  effectiveTo: string | null;
+}
+
+export interface FinanceDashboard {
+  arTotal: number;
+  arOverdue: number;
+  apTotal: number;
+  apOverdue?: number;
+  invoicesIssued?: number;
+  pendingInvoices?: number;
+  pendingPayments?: number;
+  factoringInProgress?: number;
+  insurancePolicies?: number;
+  reconciliation?: {
+    inProgress: number;
+    disputed: number;
+    differenceAmount: number;
+  };
+  // 兼容早期字段命名
+  invoicePending?: number;
+  paymentPending?: number;
+  reconciliationOpen?: number;
+  reconciliationDiff?: number;
+  factoringOpen?: number;
+  policyCount?: number;
+}
+
+export interface AnalyticsKpis {
+  revenue: number;
+  cost: number;
+  profit: number;
+  margin: number;
+  arTotal: number;
+  arOverdue: number;
+  apTotal: number;
+  invoicesIssued: number;
+  paymentsSuccess: number;
+}
+
+export interface AnalyticsOverview {
+  kpis: AnalyticsKpis;
+  arAging: Array<{ bucket: string; amount: number }>;
+}
+
+export interface AnalyticsTrend {
+  dates: string[];
+  revenue: number[];
+  cost: number[];
+  profit: number[];
+}
+
+export interface AnalyticsByCustomer {
+  customerName: string;
+  revenue: number;
+  cost: number;
+  profit: number;
+  margin: number;
+}
+
+export interface AnalyticsByMode {
+  mode: string;
+  modeLabel: string;
+  revenue: number;
+  cost: number;
+  profit: number;
 }

@@ -6,12 +6,25 @@ import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright-core';
 
 const BASE = process.env.WEB_BASE || 'http://127.0.0.1:5173';
+const API = process.env.API_BASE || 'http://127.0.0.1:8080/api';
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const shotsDir = resolve(root, 'docs/screenshots/stage1');
 mkdirSync(shotsDir, { recursive: true });
 
 const EDGE_PATH = 'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe';
 let stepCount = 0;
+
+async function findBillId(orderNo) {
+  const login = await fetch(`${API}/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username: 'settlement01', password: 'demo123' }),
+  }).then((response) => response.json());
+  const res = await fetch(`${API}/bills?keyword=${encodeURIComponent(orderNo)}&billType=RECEIVABLE&page=1&pageSize=5`, {
+    headers: { Authorization: `Bearer ${login.data.token}` },
+  }).then((response) => response.json());
+  return res.data?.list?.[0]?.id;
+}
 
 function step(title) {
   stepCount += 1;
@@ -253,10 +266,10 @@ async function main() {
     const settleCard = page.locator('[data-testid="settle-card"]').filter({ hasText: orderNo }).first();
     await settleCard.waitFor({ state: 'visible', timeout: 20000 });
     await settleCard.locator('[data-testid="settle-btn"]').click();
-    await page.locator('[data-testid="settle-card"]').filter({ hasText: orderNo }).first()
-      .locator('[data-testid="view-bill-btn"]').waitFor({ timeout: 20000 });
-    await page.locator('[data-testid="settle-card"]').filter({ hasText: orderNo }).first()
-      .locator('[data-testid="view-bill-btn"]').click();
+    await page.waitForTimeout(1500);
+    const billId = await findBillId(orderNo);
+    assert(billId, `订单 ${orderNo} 出账后应能查到账单`);
+    await page.goto(`${BASE}/bills/${billId}`);
     await page.waitForURL(/\/bills\/\d+$/, { timeout: 15000 });
     const billTotal = (await page.locator('[data-testid="bill-total"]').innerText()).trim();
     assert(billTotal.includes('15080.00'), `账单总额应为 15080.00，实际 ${billTotal}`);

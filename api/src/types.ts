@@ -10,6 +10,8 @@ export type Role =
   | 'SEA_CARRIER'
   | 'TERMINAL'
   | 'SETTLEMENT'
+  | 'FINANCE'
+  | 'INSURANCE'
   | 'ADMIN';
 
 export type OrderStatus =
@@ -119,6 +121,22 @@ export type DeviceType = 'GPS' | 'TEMP_HUMIDITY' | 'DOOR' | 'IMPACT';
 export type DeviceStatus = 'ONLINE' | 'OFFLINE';
 export type FenceType = 'PORT' | 'STATION' | 'WAREHOUSE' | 'DEPOT';
 export type FenceStatus = 'ACTIVE' | 'DISABLED';
+
+// ── Stage 4：结算 v2 / 对账 / 发票 / 支付 / 保理 / 保险 / 经营分析 ────────────
+export type BillType = 'RECEIVABLE' | 'PAYABLE';
+export type CounterpartyType = 'CUSTOMER' | 'CARRIER' | 'FINANCE' | 'INSURER';
+export type BillSource = 'ORDER' | 'SEGMENT';
+export type BillItemMode = 'ROAD' | 'SEA' | 'RAIL' | 'PORT' | 'OTHER';
+export type ReconStatus = 'DRAFT' | 'SENT' | 'CONFIRMED' | 'DISPUTED';
+export type ReconItemStatus = 'MATCH' | 'DIFF';
+export type InvoiceType = 'VAT_SPECIAL' | 'VAT_NORMAL';
+export type InvoiceStatus = 'PENDING' | 'ISSUED' | 'VOID';
+export type PaymentDirection = 'IN' | 'OUT';
+export type PaymentMethod = 'BANK_TRANSFER' | 'ONLINE' | 'FACTORING';
+export type PaymentStatus = 'PENDING' | 'SUCCESS' | 'FAILED';
+export type FactoringStatus = 'DRAFT' | 'SUBMITTED' | 'APPROVED' | 'REJECTED' | 'SETTLED';
+export type InsuranceStatus = 'QUOTED' | 'ISSUED' | 'EXPIRED' | 'CLAIMED';
+export type StatMode = 'ROAD' | 'SEA' | 'RAIL' | 'ALL';
 
 /** JWT 解出的登录用户（customer_id 由 requireAuth 从 DB 补全，便于按客户过滤） */
 export interface AuthUser {
@@ -393,13 +411,158 @@ export interface TrackPointRow {
 export interface BillRow {
   id: number;
   bill_no: string;
+  bill_type: BillType;
+  counterparty_type: CounterpartyType | null;
+  counterparty_id: number | null;
+  source: BillSource;
+  period: string | null;
+  due_date: string | null;
   order_id: number;
   waybill_id: number;
   total_amount: number;
+  tax_amount: number;
+  profit_amount: number;
   status: BillStatus;
   segment_breakdown: unknown;
   issued_at: string;
   paid_at: string | null;
+}
+
+export interface BillItemRow {
+  id: number;
+  bill_id: number;
+  seq: number;
+  mode: BillItemMode;
+  charge_type: string;
+  description: string;
+  quantity: number;
+  unit: string;
+  unit_price: number;
+  amount: number;
+  tax_rate: number;
+  tax_amount: number;
+  cost_amount: number;
+  segment_id: number | null;
+  created_at: string;
+}
+
+export interface ReconciliationRow {
+  id: number;
+  recon_no: string;
+  counterparty_type: CounterpartyType;
+  counterparty_id: number;
+  period_start: string;
+  period_end: string;
+  total_amount: number;
+  confirmed_amount: number;
+  difference_amount: number;
+  status: ReconStatus;
+  sent_at: string | null;
+  confirmed_at: string | null;
+  created_by: number | null;
+  created_at: string;
+}
+
+export interface ReconciliationItemRow {
+  id: number;
+  recon_id: number;
+  bill_id: number;
+  amount: number;
+  confirmed_amount: number;
+  difference_reason: string | null;
+  status: ReconItemStatus;
+}
+
+export interface InvoiceRow {
+  id: number;
+  invoice_no: string;
+  invoice_type: InvoiceType;
+  bill_id: number;
+  order_id: number | null;
+  buyer_name: string;
+  buyer_tax_no: string | null;
+  seller_name: string;
+  seller_tax_no: string | null;
+  amount: number;
+  tax_rate: number;
+  tax_amount: number;
+  total_amount: number;
+  status: InvoiceStatus;
+  issued_at: string | null;
+  voided_at: string | null;
+  created_by: number | null;
+  created_at: string;
+}
+
+export interface PaymentRow {
+  id: number;
+  payment_no: string;
+  direction: PaymentDirection;
+  counterparty_type: CounterpartyType;
+  counterparty_id: number | null;
+  bill_id: number | null;
+  amount: number;
+  method: PaymentMethod;
+  status: PaymentStatus;
+  bank_serial: string | null;
+  paid_at: string | null;
+  remark: string | null;
+  created_by: number | null;
+  created_at: string;
+}
+
+export interface PaymentAllocationRow {
+  id: number;
+  payment_id: number;
+  bill_id: number;
+  amount: number;
+  created_at: string;
+}
+
+export interface FactoringApplicationRow {
+  id: number;
+  app_no: string;
+  order_id: number | null;
+  bill_id: number;
+  applicant_customer_id: number;
+  finance_partner_id: number;
+  amount: number;
+  discount_rate: number;
+  fee: number;
+  status: FactoringStatus;
+  applied_at: string;
+  approved_at: string | null;
+  settled_at: string | null;
+  created_by: number | null;
+}
+
+export interface InsurancePolicyRow {
+  id: number;
+  policy_no: string;
+  order_id: number;
+  waybill_id: number | null;
+  insurer_partner_id: number;
+  insured_amount: number;
+  rate: number;
+  premium: number;
+  status: InsuranceStatus;
+  effective_from: string;
+  effective_to: string;
+  created_by: number | null;
+  created_at: string;
+}
+
+export interface StatDailyRow {
+  id: number;
+  stat_date: string;
+  customer_id: number | null;
+  mode: StatMode;
+  order_count: number;
+  revenue: number;
+  cost: number;
+  profit: number;
+  margin: number;
+  created_at: string;
 }
 
 /** 账单明细中的一段（segment_breakdown JSON 元素） */

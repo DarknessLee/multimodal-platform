@@ -346,13 +346,14 @@ async function main() {
   ok('14 天趋势数据');
 
   section('10. 集成 / 审计 / 通知');
-  const messages = await api('GET', '/integration/messages?page=1&pageSize=100', { token: token('admin01') });
-  assert(messages.total >= 40, `集成报文应 ≥40，实际 ${messages.total}`);
-  const failed = messages.list.filter((m) => m.status === 'FAILED');
+  const allMessages = await api('GET', '/integration/messages?page=1&pageSize=1', { token: token('admin01') });
+  assert(allMessages.total >= 40, `集成报文应 ≥40，实际 ${allMessages.total}`);
+  const failedMessages = await api('GET', '/integration/messages?status=FAILED&page=1&pageSize=5', { token: token('admin01') });
+  const failed = failedMessages.list;
   assert(failed.length >= 1, '应存在 FAILED 报文用于重试演示');
   const retried = await api('POST', `/integration/messages/${failed[0].id}/retry`, { token: token('admin01') });
   assert(retried.status === 'SUCCESS', `重试后报文应为 SUCCESS，实际 ${retried.status}`);
-  ok('集成报文查询与失败重试', `${messages.total} 条 / 重试 ${failed[0].msgNo}`);
+  ok('集成报文查询与失败重试', `${allMessages.total} 条 / 重试 ${failed[0].msgNo}`);
 
   const contractMessages = await api('GET', `/integration/messages?relatedType=CONTRACT&relatedId=${contract.id}&page=1&pageSize=20`, { token: token('admin01') });
   assert(contractMessages.total >= 1, '合同签署应写入 CA 集成报文');

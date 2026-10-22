@@ -14,6 +14,8 @@ const ROLE_DEFS = [
   { code: 'SEA_CARRIER', name: '水路承运人', desc: '水路段承运（Stage 2 工作台）' },
   { code: 'TERMINAL', name: '港站', desc: '港口/货场/堆场作业与箱况录入' },
   { code: 'SETTLEMENT', name: '结算', desc: '账单生成、对账、结算' },
+  { code: 'FINANCE', name: '金融机构', desc: '银行/保理：支付回执、保理审批' },
+  { code: 'INSURANCE', name: '保险机构', desc: '货运险保单与理赔' },
   { code: 'ADMIN', name: '平台运营', desc: '主数据、集成、审计与平台配置' },
 ];
 
@@ -41,6 +43,12 @@ const MENU_PERMS = [
   ['menu:monitor', '监控大屏', 'monitor'],
   ['menu:alerts', '预警中心', 'alert'],
   ['menu:capacity', '运力池', 'capacity'],
+  ['menu:reconciliation', '对账管理', 'finance'],
+  ['menu:invoice', '发票管理', 'finance'],
+  ['menu:payment', '收付款', 'finance'],
+  ['menu:factoring', '保理工作台', 'finance'],
+  ['menu:insurance', '保险保单', 'insurance'],
+  ['menu:analytics', '经营分析', 'analytics'],
 ];
 
 const BUTTON_PERMS = [
@@ -53,6 +61,10 @@ const BUTTON_PERMS = [
   ['container:release', '放箱'], ['container:movement', '箱动态登记'], ['container:return', '还箱'], ['rail:apply', '铁路需求车提报'], ['sea:book', '水路订舱'],
   ['dispatch:generate', '生成调度方案'], ['dispatch:confirm', '确认调度方案'], ['alert:ack', '预警确认'], ['alert:close', '预警关闭'],
   ['exception:handle', '异常工单处置'], ['iot:ingest', 'IoT 数据上报'],
+  ['bill:issue-invoice', '账单开票'], ['invoice:issue', '开具发票'], ['invoice:void', '作废发票'],
+  ['payment:record', '登记收付款'], ['payment:confirm', '支付回执确认'],
+  ['recon:create', '创建对账单'], ['recon:send', '发送对账单'], ['recon:confirm', '确认对账单'], ['recon:dispute', '对账差异'],
+  ['factoring:apply', '保理申请'], ['factoring:approve', '保理审批'], ['insurance:create', '投保'], ['analytics:read', '经营分析查看'],
 ];
 
 const ROLE_PERMISSIONS = {
@@ -63,16 +75,27 @@ const ROLE_PERMISSIONS = {
   MTO: ['menu:dashboard', 'menu:orders', 'menu:quotes', 'menu:contracts', 'menu:customers', 'menu:partners', 'menu:master',
     'menu:dispatch', 'menu:track', 'menu:settlement', 'menu:bills', 'menu:integration', 'menu:audit',
     'menu:waybills', 'menu:containers', 'menu:documents', 'menu:monitor', 'menu:alerts', 'menu:capacity',
+    'menu:reconciliation', 'menu:invoice', 'menu:payment', 'menu:analytics',
     'order:create', 'order:cancel', 'order:dispatch', 'quote:create', 'quote:send', 'quote:accept',
     'contract:create', 'contract:send', 'price:create', 'customer:create', 'partner:create', 'integration:retry',
     'waybill:notarize', 'document:upload', 'document:sign', 'document:ocr',
     'container:release', 'container:movement', 'container:return',
-    'dispatch:generate', 'dispatch:confirm', 'alert:ack', 'alert:close', 'exception:handle', 'iot:ingest'],
+    'dispatch:generate', 'dispatch:confirm', 'alert:ack', 'alert:close', 'exception:handle', 'iot:ingest',
+    'bill:issue-invoice', 'invoice:issue', 'invoice:void', 'payment:record', 'payment:confirm',
+    'recon:create', 'recon:send', 'recon:confirm', 'recon:dispute', 'analytics:read'],
   CARRIER: ['menu:dashboard', 'menu:orders', 'menu:tasks', 'menu:track', 'menu:waybills', 'menu:containers', 'menu:monitor', 'menu:alerts', 'segment:status', 'container:movement'],
   RAIL_CARRIER: ['menu:dashboard', 'menu:orders', 'menu:track', 'menu:waybills', 'menu:rail', 'menu:monitor', 'rail:apply'],
   SEA_CARRIER: ['menu:dashboard', 'menu:orders', 'menu:track', 'menu:waybills', 'menu:sea', 'menu:monitor', 'sea:book'],
   TERMINAL: ['menu:dashboard', 'menu:terminal', 'menu:track', 'menu:waybills', 'menu:containers', 'menu:monitor', 'menu:alerts', 'segment:status', 'container:movement', 'container:return', 'document:upload'],
-  SETTLEMENT: ['menu:dashboard', 'menu:settlement', 'menu:bills', 'menu:orders', 'menu:waybills', 'menu:documents', 'bill:settle'],
+  SETTLEMENT: ['menu:dashboard', 'menu:settlement', 'menu:bills', 'menu:orders', 'menu:waybills', 'menu:documents',
+    'menu:reconciliation', 'menu:invoice', 'menu:payment', 'menu:analytics',
+    'bill:settle', 'bill:issue-invoice', 'invoice:issue', 'invoice:void', 'payment:record', 'payment:confirm',
+    'recon:create', 'recon:send', 'recon:confirm', 'recon:dispute', 'analytics:read'],
+  FINANCE: ['menu:dashboard', 'menu:orders', 'menu:waybills', 'menu:documents', 'menu:settlement', 'menu:bills',
+    'menu:reconciliation', 'menu:invoice', 'menu:payment', 'menu:factoring', 'menu:analytics',
+    'payment:record', 'payment:confirm', 'recon:confirm', 'recon:dispute',
+    'factoring:apply', 'factoring:approve', 'analytics:read'],
+  INSURANCE: ['menu:dashboard', 'menu:orders', 'menu:waybills', 'menu:insurance', 'insurance:create'],
   ADMIN: [...MENU_PERMS.map(([code]) => code), ...BUTTON_PERMS.map(([code]) => code)],
 };
 
@@ -398,6 +421,8 @@ export async function seedReference(conn) {
     ['terminal01', '洋山港/阳逻港操作员', 'TERMINAL', null, partnerBy('PORT', '上港').id, '13900000012'],
     ['settlement01', '联运结算中心', 'SETTLEMENT', null, null, '13900000031'],
     ['admin01', '平台运营管理员', 'ADMIN', null, null, '13900000032'],
+    ['finance01', '中国银行（金融机构）', 'FINANCE', null, partnerBy('FINANCE', '中国银行').id, '13900000033'],
+    ['insurance01', '人保财险（保险机构）', 'INSURANCE', null, partnerBy('INSURANCE', '人保财险').id, '13900000034'],
   ];
   for (const [username, displayName, role, customerId, partnerId, phone] of userDefs) {
     const id = await insert(conn,

@@ -8,6 +8,7 @@ import { ordersRouter } from './routes/orders';
 import { segmentsRouter } from './routes/segments';
 import { waybillsRouter } from './routes/waybills';
 import { alertsRouter, exceptionsRouter } from './modules/alerts/router';
+import { analyticsRouter, financeRouter } from './modules/analytics/router';
 import { auditRouter } from './modules/audit/router';
 import { capacityRouter } from './modules/capacity/router';
 import { containersRouter, depotsRouter } from './modules/containers/router';
@@ -15,8 +16,11 @@ import { contractsRouter } from './modules/contract/router';
 import { dashboardRouter } from './modules/dashboard/router';
 import { dispatchRouter } from './modules/dispatch/router';
 import { documentsRouter } from './modules/documents/router';
+import { factoringRouter } from './modules/factoring/router';
+import { insuranceRouter } from './modules/insurance/router';
 import { integrationRouter } from './modules/integration/router';
 import { geoFencesRouter, iotRouter } from './modules/iot/router';
+import { invoicesRouter } from './modules/invoice/router';
 import {
   containerTypesRouter,
   customersRouter,
@@ -30,8 +34,10 @@ import {
 import { monitorRouter } from './modules/monitor/router';
 import { notificationsRouter } from './modules/notification/router';
 import { notarizeRouter } from './modules/notarize/router';
+import { paymentsRouter } from './modules/payment/router';
 import { quotesRouter } from './modules/quote/router';
 import { railRouter } from './modules/rail/router';
+import { reconciliationsRouter } from './modules/reconciliation/router';
 import { seaRouter } from './modules/sea/router';
 
 /** 组装 Express 应用：统一 /api 前缀 + JSON 响应 + 全局错误处理 */
@@ -86,6 +92,15 @@ export function createApp() {
   app.use('/api/exceptions', requireAuth, exceptionsRouter);
   app.use('/api/iot', requireAuth, iotRouter);
   app.use('/api/geo-fences', requireAuth, geoFencesRouter);
+
+  // Stage 4 模块：对账 / 发票 / 支付 / 保理 / 保险 / 经营分析 / 财务看板
+  app.use('/api/reconciliations', requireAuth, reconciliationsRouter);
+  app.use('/api/invoices', requireAuth, invoicesRouter);
+  app.use('/api/payments', requireAuth, paymentsRouter);
+  app.use('/api/factoring', requireAuth, factoringRouter);
+  app.use('/api/insurance', requireAuth, insuranceRouter);
+  app.use('/api/analytics', requireAuth, analyticsRouter);
+  app.use('/api/finance', requireAuth, financeRouter);
 
   app.use(notFoundHandler);
   app.use(errorHandler);
