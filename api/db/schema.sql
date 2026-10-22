@@ -1,9 +1,16 @@
--- 多式联运演示版 v1 — Stage 1 schema（7 张 v0 表 + 19 张平台表，utf8mb4 / InnoDB）
+-- 多式联运演示版 v1 — Stage 2 schema（33 张表 = v0 7 + Stage1 19 + Stage2 7 新表 + 2 表扩展，utf8mb4 / InnoDB）
 -- 由 api/db/init.mjs 执行：先 DROP 全部表再建表，保证演示数据可重置。
 -- 约定：JSON 输出 camelCase；表名 orders 避开 MySQL 保留字 order；v0 字段只增不改。
 
 SET NAMES utf8mb4;
 
+DROP TABLE IF EXISTS notarize_record;
+DROP TABLE IF EXISTS depot_storage;
+DROP TABLE IF EXISTS container_movement;
+DROP TABLE IF EXISTS waybill_container;
+DROP TABLE IF EXISTS waybill_event;
+DROP TABLE IF EXISTS document;
+DROP TABLE IF EXISTS e_seal;
 DROP TABLE IF EXISTS notification;
 DROP TABLE IF EXISTS event_outbox;
 DROP TABLE IF EXISTS audit_log;
@@ -12,8 +19,8 @@ DROP TABLE IF EXISTS order_cargo;
 DROP TABLE IF EXISTS bill;
 DROP TABLE IF EXISTS track_point;
 DROP TABLE IF EXISTS waybill_segment;
-DROP TABLE IF EXISTS waybill;
 DROP TABLE IF EXISTS container;
+DROP TABLE IF EXISTS waybill;
 DROP TABLE IF EXISTS orders;
 DROP TABLE IF EXISTS quote_item;
 DROP TABLE IF EXISTS quote;
@@ -560,3 +567,168 @@ CREATE TABLE event_outbox (
   PRIMARY KEY (id),
   KEY idx_outbox_status (status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- Stage 2：一单制运单 / 单证 / 存证 / 箱管
+-- ═══════════════════════════════════════════════════════════════════════════
+
+CREATE TABLE e_seal (
+  id         BIGINT       NOT NULL AUTO_INCREMENT,
+  seal_no    VARCHAR(30)  NOT NULL,
+  seal_name  VARCHAR(80)  NOT NULL,
+  owner_type ENUM('PLATFORM','CUSTOMER','CARRIER','TERMINAL') NOT NULL,
+  owner_id   BIGINT       NULL,
+  ca_serial  VARCHAR(64)  NOT NULL,
+  status     ENUM('ACTIVE','REVOKED') NOT NULL DEFAULT 'ACTIVE',
+  issued_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_seal_no (seal_no)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE document (
+  id             BIGINT       NOT NULL AUTO_INCREMENT,
+  doc_no         VARCHAR(32)  NOT NULL,
+  doc_type       ENUM('ORDER_CONFIRM','WAYBILL_MASTER','WAYBILL_SEGMENT','PACKING_LIST','POD','OTHER') NOT NULL,
+  biz_type       ENUM('ORDER','WAYBILL','BILL','CONTRACT') NOT NULL,
+  biz_id         BIGINT       NOT NULL,
+  file_name      VARCHAR(120) NOT NULL,
+  mime_type      VARCHAR(60)  NOT NULL DEFAULT 'application/pdf',
+  file_path      VARCHAR(255) NULL,
+  file_size      BIGINT       NOT NULL DEFAULT 0,
+  content_hash   CHAR(64)     NULL,
+  ocr_status     ENUM('NONE','PENDING','SUCCESS','FAILED') NOT NULL DEFAULT 'NONE',
+  ocr_result     JSON         NULL,
+  sign_status    ENUM('UNSIGNED','SIGNED') NOT NULL DEFAULT 'UNSIGNED',
+  signed_at      DATETIME     NULL,
+  sign_hash      CHAR(64)     NULL,
+  seal_id        BIGINT       NULL,
+  signer_name    VARCHAR(50)  NULL,
+  notarize_tx_id VARCHAR(64)  NULL,
+  created_by     BIGINT       NULL,
+  created_at     DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at     DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_doc_no (doc_no),
+  KEY idx_doc_biz (biz_type, biz_id),
+  KEY idx_doc_type (doc_type),
+  CONSTRAINT fk_doc_seal FOREIGN KEY (seal_id) REFERENCES e_seal (id),
+  CONSTRAINT fk_doc_creator FOREIGN KEY (created_by) REFERENCES user (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE waybill_event (
+  id               BIGINT       NOT NULL AUTO_INCREMENT,
+  waybill_id       BIGINT       NOT NULL,
+  segment_id       BIGINT       NULL,
+  event_type       ENUM('ISSUE','RELEASE','PICKUP','GATE_IN','LOAD','DEPART','ARRIVE','DISCHARGE','HANDOVER','POD','SIGN','NOTARIZE') NOT NULL,
+  occurred_at      DATETIME     NOT NULL,
+  node_id          BIGINT       NULL,
+  operator_user_id BIGINT       NULL,
+  description      VARCHAR(255) NULL,
+  payload          JSON         NULL,
+  prev_hash        CHAR(64)     NULL,
+  hash             CHAR(64)     NULL,
+  tx_id            VARCHAR(64)  NULL,
+  block_height     INT          NULL,
+  created_at       DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  KEY idx_event_waybill (waybill_id, occurred_at),
+  KEY idx_event_segment (segment_id),
+  CONSTRAINT fk_event_waybill FOREIGN KEY (waybill_id) REFERENCES waybill (id),
+  CONSTRAINT fk_event_segment FOREIGN KEY (segment_id) REFERENCES waybill_segment (id),
+  CONSTRAINT fk_event_node FOREIGN KEY (node_id) REFERENCES port_station (id),
+  CONSTRAINT fk_event_user FOREIGN KEY (operator_user_id) REFERENCES user (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE waybill_container (
+  id            BIGINT       NOT NULL AUTO_INCREMENT,
+  waybill_id    BIGINT       NOT NULL,
+  container_id  BIGINT       NOT NULL,
+  seal_no       VARCHAR(30)  NULL,
+  loaded_at     DATETIME     NULL,
+  discharged_at DATETIME     NULL,
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_waybill_container (waybill_id, container_id),
+  KEY idx_wc_container (container_id),
+  CONSTRAINT fk_wc_waybill FOREIGN KEY (waybill_id) REFERENCES waybill (id) ON DELETE CASCADE,
+  CONSTRAINT fk_wc_container FOREIGN KEY (container_id) REFERENCES container (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE container_movement (
+  id               BIGINT       NOT NULL AUTO_INCREMENT,
+  container_id     BIGINT       NOT NULL,
+  waybill_id       BIGINT       NULL,
+  movement_type    ENUM('RELEASE','PICKUP','GATE_IN','LOAD','DEPART','ARRIVE','DISCHARGE','GATE_OUT','RETURN','REPAIR') NOT NULL,
+  node_id          BIGINT       NULL,
+  occurred_at      DATETIME     NOT NULL,
+  operator_user_id BIGINT       NULL,
+  condition_text   VARCHAR(120) NULL,
+  photo_url        VARCHAR(255) NULL,
+  remark           VARCHAR(255) NULL,
+  created_at       DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  KEY idx_movement_container (container_id, occurred_at),
+  KEY idx_movement_waybill (waybill_id),
+  CONSTRAINT fk_movement_container FOREIGN KEY (container_id) REFERENCES container (id),
+  CONSTRAINT fk_movement_waybill FOREIGN KEY (waybill_id) REFERENCES waybill (id),
+  CONSTRAINT fk_movement_node FOREIGN KEY (node_id) REFERENCES port_station (id),
+  CONSTRAINT fk_movement_user FOREIGN KEY (operator_user_id) REFERENCES user (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE depot_storage (
+  id            BIGINT        NOT NULL AUTO_INCREMENT,
+  container_id  BIGINT        NOT NULL,
+  node_id       BIGINT        NOT NULL,
+  waybill_id    BIGINT        NULL,
+  start_at      DATETIME      NOT NULL,
+  end_at        DATETIME      NULL,
+  storage_days  INT           NOT NULL DEFAULT 0,
+  fee_amount    DECIMAL(12,2) NOT NULL DEFAULT 0,
+  status        ENUM('STACKED','RELEASED') NOT NULL DEFAULT 'STACKED',
+  created_at    DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  KEY idx_storage_container (container_id),
+  KEY idx_storage_node (node_id),
+  CONSTRAINT fk_storage_container FOREIGN KEY (container_id) REFERENCES container (id),
+  CONSTRAINT fk_storage_node FOREIGN KEY (node_id) REFERENCES port_station (id),
+  CONSTRAINT fk_storage_waybill FOREIGN KEY (waybill_id) REFERENCES waybill (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE notarize_record (
+  id           BIGINT       NOT NULL AUTO_INCREMENT,
+  biz_type     ENUM('WAYBILL','DOCUMENT','CONTRACT','BILL','ORDER') NOT NULL,
+  biz_id       BIGINT       NOT NULL,
+  event_type   VARCHAR(50)  NOT NULL,
+  payload_hash CHAR(64)     NOT NULL,
+  prev_hash    CHAR(64)     NOT NULL,
+  hash         CHAR(64)     NOT NULL,
+  block_height INT          NOT NULL,
+  tx_id        VARCHAR(64)  NOT NULL,
+  created_at   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_tx_id (tx_id),
+  KEY idx_notarize_biz (biz_type, biz_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ── Stage 2 表扩展 ─────────────────────────────────────────────────────────
+ALTER TABLE waybill
+  ADD COLUMN waybill_type ENUM('MASTER','SEGMENT') NOT NULL DEFAULT 'MASTER' AFTER waybill_no,
+  ADD COLUMN parent_waybill_id BIGINT NULL AFTER waybill_type,
+  ADD COLUMN mode ENUM('ROAD','SEA','RAIL') NULL AFTER parent_waybill_id,
+  ADD COLUMN carrier_partner_id BIGINT NULL AFTER mode,
+  ADD COLUMN issued_at DATETIME NULL AFTER signed_at,
+  ADD COLUMN document_no VARCHAR(32) NULL AFTER issued_at,
+  ADD COLUMN notarize_tx_id VARCHAR(64) NULL AFTER document_no,
+  ADD KEY idx_waybill_parent (parent_waybill_id),
+  ADD CONSTRAINT fk_waybill_parent FOREIGN KEY (parent_waybill_id) REFERENCES waybill (id),
+  ADD CONSTRAINT fk_waybill_carrier FOREIGN KEY (carrier_partner_id) REFERENCES partner (id);
+
+ALTER TABLE container
+  MODIFY COLUMN status ENUM('EMPTY','RELEASED','GATE_IN','LOADED','IN_TRANSIT','ARRIVED','DELIVERED','RETURNED','IN_REPAIR','AT_DEPOT') NOT NULL DEFAULT 'EMPTY',
+  ADD COLUMN current_node_id BIGINT NULL AFTER condition_text,
+  ADD COLUMN current_waybill_id BIGINT NULL AFTER current_node_id,
+  ADD COLUMN owner_partner_id BIGINT NULL AFTER current_waybill_id,
+  ADD COLUMN repair_fee DECIMAL(12,2) NOT NULL DEFAULT 0 AFTER owner_partner_id,
+  ADD KEY idx_container_node (current_node_id),
+  ADD CONSTRAINT fk_container_node FOREIGN KEY (current_node_id) REFERENCES port_station (id),
+  ADD CONSTRAINT fk_container_waybill FOREIGN KEY (current_waybill_id) REFERENCES waybill (id),
+  ADD CONSTRAINT fk_container_owner FOREIGN KEY (owner_partner_id) REFERENCES partner (id);

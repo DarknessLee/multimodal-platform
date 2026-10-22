@@ -8,8 +8,10 @@ import { ordersRouter } from './routes/orders';
 import { segmentsRouter } from './routes/segments';
 import { waybillsRouter } from './routes/waybills';
 import { auditRouter } from './modules/audit/router';
+import { containersRouter, depotsRouter } from './modules/containers/router';
 import { contractsRouter } from './modules/contract/router';
 import { dashboardRouter } from './modules/dashboard/router';
+import { documentsRouter } from './modules/documents/router';
 import { integrationRouter } from './modules/integration/router';
 import {
   containerTypesRouter,
@@ -22,18 +24,22 @@ import {
   routesRouter,
 } from './modules/master/router';
 import { notificationsRouter } from './modules/notification/router';
+import { notarizeRouter } from './modules/notarize/router';
 import { quotesRouter } from './modules/quote/router';
+import { railRouter } from './modules/rail/router';
+import { seaRouter } from './modules/sea/router';
 
 /** 组装 Express 应用：统一 /api 前缀 + JSON 响应 + 全局错误处理 */
 export function createApp() {
   const app = express();
   app.disable('x-powered-by');
   app.use(cors());
-  app.use(express.json({ limit: '1mb' }));
+  // base64 单证上传（≤5MB）需要较大 JSON body
+  app.use(express.json({ limit: '8mb' }));
 
   // 根路径仅作健康文本，不属于业务接口
   app.get('/', (_req, res) => {
-    res.type('text/plain; charset=utf-8').send('多式联运平台 API 运行中（Stage 1 /api）');
+    res.type('text/plain; charset=utf-8').send('多式联运平台 API 运行中（Stage 2 /api）');
   });
 
   // v0 接口（保持兼容）
@@ -58,6 +64,14 @@ export function createApp() {
   app.use('/api/integration', requireAuth, integrationRouter);
   app.use('/api/audit', requireAuth, auditRouter);
   app.use('/api/notifications', requireAuth, notificationsRouter);
+
+  // Stage 2 模块
+  app.use('/api/documents', requireAuth, documentsRouter);
+  app.use('/api/containers', requireAuth, containersRouter);
+  app.use('/api/depots', requireAuth, depotsRouter);
+  app.use('/api/notarize', requireAuth, notarizeRouter);
+  app.use('/api/rail', requireAuth, railRouter);
+  app.use('/api/sea', requireAuth, seaRouter);
 
   app.use(notFoundHandler);
   app.use(errorHandler);

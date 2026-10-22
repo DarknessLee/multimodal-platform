@@ -5,7 +5,7 @@
         <div class="brand-logo">联</div>
         <div class="brand-text">
           <div class="brand-name">多式联运平台</div>
-          <div class="brand-version">Stage 1 · 受理闭环</div>
+          <div class="brand-version">Stage 2 · 一单制与箱管</div>
         </div>
       </div>
 
@@ -143,7 +143,13 @@ const activeMenu = computed<string>(() => {
   if (path.startsWith('/master/data')) return '/master/data';
   if (path.startsWith('/integration')) return '/integration/messages';
   if (path.startsWith('/audit')) return '/audit/logs';
-  if (path.startsWith('/waybills')) return '/orders?view=track';
+  if (path.startsWith('/waybills')) {
+    return path.endsWith('/track') ? '/orders?view=track' : '/waybills';
+  }
+  if (path.startsWith('/documents')) return '/documents';
+  if (path.startsWith('/containers')) return '/containers';
+  if (path.startsWith('/rail')) return '/rail/tasks';
+  if (path.startsWith('/sea')) return '/sea/tasks';
   if (path.startsWith('/bills')) return '/orders?view=bills';
   return path;
 });

@@ -112,10 +112,52 @@ const routes: RouteRecordRaw[] = [
         meta: { title: '港站作业', permission: 'menu:terminal' },
       },
       {
-        path: 'waybills/:id',
+        path: 'waybills',
+        name: 'waybills',
+        component: () => import('../views/WaybillCenterView.vue'),
+        meta: { title: '运单中心', permission: 'menu:waybills' },
+      },
+      {
+        path: 'waybills/:id/track',
         name: 'waybill-track',
         component: () => import('../views/TrackingView.vue'),
         meta: { title: '运单跟踪', permission: 'menu:track' },
+      },
+      {
+        path: 'waybills/:id',
+        name: 'waybill-detail',
+        component: () => import('../views/WaybillDetailView.vue'),
+        meta: { title: '一单制运单', permission: 'menu:waybills' },
+      },
+      {
+        path: 'documents',
+        name: 'documents',
+        component: () => import('../views/DocumentsView.vue'),
+        meta: { title: '单证中心', permission: 'menu:documents' },
+      },
+      {
+        path: 'containers',
+        name: 'containers',
+        component: () => import('../views/ContainersView.vue'),
+        meta: { title: '箱管中心', permission: 'menu:containers' },
+      },
+      {
+        path: 'containers/:id',
+        name: 'container-detail',
+        component: () => import('../views/ContainerDetailView.vue'),
+        meta: { title: '集装箱详情', permission: 'menu:containers' },
+      },
+      {
+        path: 'rail/tasks',
+        name: 'rail-tasks',
+        component: () => import('../views/RailTasksView.vue'),
+        meta: { title: '铁路工作台', permission: 'menu:rail' },
+      },
+      {
+        path: 'sea/tasks',
+        name: 'sea-tasks',
+        component: () => import('../views/SeaTasksView.vue'),
+        meta: { title: '水路工作台', permission: 'menu:sea' },
       },
       {
         path: 'settlement',

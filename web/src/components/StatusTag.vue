@@ -75,19 +75,39 @@ const displayLabel = computed<string>(() => {
 
 const tagType = computed<TagType>(() => {
   const status = props.status ?? '';
-  if (['SIGNED', 'BILLED', 'COMPLETED', 'DELIVERED', 'PAID', 'ACCEPTED', 'SUCCESS', 'ACTIVE', 'UP', 'SIGNED'].includes(status)) {
+  if (
+    ['SIGNED', 'BILLED', 'COMPLETED', 'DELIVERED', 'PAID', 'ACCEPTED', 'SUCCESS', 'ACTIVE', 'UP', 'RETURNED', 'STACKED'].includes(
+      status,
+    )
+  ) {
     return 'success';
   }
-  if (['ARRIVED', 'PENDING_SIGN', 'URGENT', 'EXPIRED', 'DEGRADED', 'RETRYING'].includes(status)) {
+  if (
+    ['ARRIVED', 'PENDING_SIGN', 'URGENT', 'EXPIRED', 'DEGRADED', 'RETRYING', 'AT_DEPOT', 'PENDING'].includes(status)
+  ) {
     return 'warning';
   }
-  if (['FAILED', 'TERMINATED', 'EXCEPTION'].includes(status)) {
+  if (['FAILED', 'TERMINATED', 'EXCEPTION', 'IN_REPAIR', 'REJECTED'].includes(status)) {
     return 'danger';
   }
-  if (['CREATED', 'PENDING', 'DRAFT', 'CANCELLED', 'DISABLED', 'DOWN'].includes(status)) {
+  if (['CREATED', 'PENDING', 'DRAFT', 'CANCELLED', 'DISABLED', 'DOWN', 'EMPTY'].includes(status)) {
     return 'info';
   }
-  if (['DISPATCHED', 'IN_TRANSIT', 'GATE_IN', 'LOADED', 'SENT', 'CONTRACTED', 'CONFIRMED'].includes(status)) {
+  if (
+    [
+      'DISPATCHED',
+      'IN_TRANSIT',
+      'GATE_IN',
+      'LOADED',
+      'SENT',
+      'CONTRACTED',
+      'CONFIRMED',
+      'RELEASED',
+      'GATE_OUT',
+      'BOOKED',
+      'APPLIED',
+    ].includes(status)
+  ) {
     return 'primary';
   }
   return 'info';

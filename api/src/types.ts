@@ -31,7 +31,17 @@ export type WaybillStatus = 'PENDING' | 'IN_TRANSIT' | 'ARRIVED' | 'SIGNED';
 export type SegmentStatus = 'PENDING' | 'ACCEPTED' | 'IN_TRANSIT' | 'ARRIVED' | 'COMPLETED';
 export type SegmentMode = 'ROAD' | 'SEA' | 'RAIL';
 export type SegmentAction = 'ACCEPT' | 'DEPART' | 'ARRIVE' | 'GATE_IN';
-export type ContainerStatus = 'EMPTY' | 'GATE_IN' | 'LOADED' | 'IN_TRANSIT' | 'ARRIVED' | 'DELIVERED';
+export type ContainerStatus =
+  | 'EMPTY'
+  | 'RELEASED'
+  | 'GATE_IN'
+  | 'LOADED'
+  | 'IN_TRANSIT'
+  | 'ARRIVED'
+  | 'DELIVERED'
+  | 'RETURNED'
+  | 'IN_REPAIR'
+  | 'AT_DEPOT';
 export type BillStatus = 'ISSUED' | 'PAID';
 export type TrackSource = 'MOCK_GPS' | 'MOCK_EDI' | 'CARRIER_REPORT' | 'TERMINAL_REPORT' | 'MTO';
 
@@ -58,6 +68,40 @@ export type CalcMethod = 'PER_CONTAINER' | 'PER_KM' | 'PER_TON' | 'PER_TEU' | 'F
 export type IntegrationDirection = 'IN' | 'OUT';
 export type IntegrationStatus = 'PENDING' | 'SUCCESS' | 'FAILED' | 'RETRYING';
 export type NotificationType = 'TODO' | 'ALERT' | 'INFO';
+
+// ── Stage 2：一单制 / 单证 / 存证 / 箱管 ────────────────────────────────────
+export type WaybillType = 'MASTER' | 'SEGMENT';
+export type DocType = 'ORDER_CONFIRM' | 'WAYBILL_MASTER' | 'WAYBILL_SEGMENT' | 'PACKING_LIST' | 'POD' | 'OTHER';
+export type DocBizType = 'ORDER' | 'WAYBILL' | 'BILL' | 'CONTRACT';
+export type OcrStatus = 'NONE' | 'PENDING' | 'SUCCESS' | 'FAILED';
+export type DocSignStatus = 'UNSIGNED' | 'SIGNED';
+export type WaybillEventType =
+  | 'ISSUE'
+  | 'RELEASE'
+  | 'PICKUP'
+  | 'GATE_IN'
+  | 'LOAD'
+  | 'DEPART'
+  | 'ARRIVE'
+  | 'DISCHARGE'
+  | 'HANDOVER'
+  | 'POD'
+  | 'SIGN'
+  | 'NOTARIZE';
+export type ContainerMovementType =
+  | 'RELEASE'
+  | 'PICKUP'
+  | 'GATE_IN'
+  | 'LOAD'
+  | 'DEPART'
+  | 'ARRIVE'
+  | 'DISCHARGE'
+  | 'GATE_OUT'
+  | 'RETURN'
+  | 'REPAIR';
+export type StorageStatus = 'STACKED' | 'RELEASED';
+export type SealOwnerType = 'PLATFORM' | 'CUSTOMER' | 'CARRIER' | 'TERMINAL';
+export type NotarizeBizType = 'WAYBILL' | 'DOCUMENT' | 'CONTRACT' | 'BILL' | 'ORDER';
 
 /** JWT 解出的登录用户（customer_id 由 requireAuth 从 DB 补全，便于按客户过滤） */
 export interface AuthUser {
@@ -167,17 +211,129 @@ export interface ContainerRow {
   seal_no: string | null;
   status: ContainerStatus;
   condition_text: string | null;
+  current_node_id: number | null;
+  current_waybill_id: number | null;
+  owner_partner_id: number | null;
+  repair_fee: number;
   created_at: string;
   updated_at: string;
+}
+
+export interface ESealRow {
+  id: number;
+  seal_no: string;
+  seal_name: string;
+  owner_type: SealOwnerType;
+  owner_id: number | null;
+  ca_serial: string;
+  status: 'ACTIVE' | 'REVOKED';
+  issued_at: string;
+}
+
+export interface DocumentRow {
+  id: number;
+  doc_no: string;
+  doc_type: DocType;
+  biz_type: DocBizType;
+  biz_id: number;
+  file_name: string;
+  mime_type: string;
+  file_path: string | null;
+  file_size: number;
+  content_hash: string | null;
+  ocr_status: OcrStatus;
+  ocr_result: unknown;
+  sign_status: DocSignStatus;
+  signed_at: string | null;
+  sign_hash: string | null;
+  seal_id: number | null;
+  signer_name: string | null;
+  notarize_tx_id: string | null;
+  created_by: number | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface WaybillEventRow {
+  id: number;
+  waybill_id: number;
+  segment_id: number | null;
+  event_type: WaybillEventType;
+  occurred_at: string;
+  node_id: number | null;
+  operator_user_id: number | null;
+  description: string | null;
+  payload: unknown;
+  prev_hash: string | null;
+  hash: string | null;
+  tx_id: string | null;
+  block_height: number | null;
+  created_at: string;
+}
+
+export interface WaybillContainerRow {
+  id: number;
+  waybill_id: number;
+  container_id: number;
+  seal_no: string | null;
+  loaded_at: string | null;
+  discharged_at: string | null;
+}
+
+export interface ContainerMovementRow {
+  id: number;
+  container_id: number;
+  waybill_id: number | null;
+  movement_type: ContainerMovementType;
+  node_id: number | null;
+  occurred_at: string;
+  operator_user_id: number | null;
+  condition_text: string | null;
+  photo_url: string | null;
+  remark: string | null;
+  created_at: string;
+}
+
+export interface DepotStorageRow {
+  id: number;
+  container_id: number;
+  node_id: number;
+  waybill_id: number | null;
+  start_at: string;
+  end_at: string | null;
+  storage_days: number;
+  fee_amount: number;
+  status: StorageStatus;
+  created_at: string;
+}
+
+export interface NotarizeRecordRow {
+  id: number;
+  biz_type: NotarizeBizType;
+  biz_id: number;
+  event_type: string;
+  payload_hash: string;
+  prev_hash: string;
+  hash: string;
+  block_height: number;
+  tx_id: string;
+  created_at: string;
 }
 
 export interface WaybillRow {
   id: number;
   waybill_no: string;
+  waybill_type: WaybillType;
+  parent_waybill_id: number | null;
+  mode: SegmentMode | null;
+  carrier_partner_id: number | null;
   order_id: number;
   status: WaybillStatus;
   signer_name: string | null;
   signed_at: string | null;
+  issued_at: string | null;
+  document_no: string | null;
+  notarize_tx_id: string | null;
   created_at: string;
   updated_at: string;
 }

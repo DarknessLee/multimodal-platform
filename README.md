@@ -3,8 +3,8 @@
 平台化多式联运演示：**货主 / 货代 / MTO / 公路承运人 / 铁路承运人 / 水路承运人 / 港站 / 结算 / 平台运营** 单 Web 端多角色协同；
 一次委托从「询价 → 报价 → 合同 → 下单 → 调度 → 公铁水履约 → 签收 → 分段账单」全流程可点通。
 
-- **当前版本：Stage 1（平台基座与受理闭环）**：26 张表 / 9 角色 / 报价合同订单履约结算闭环 / 集成与审计 Mock
-- 历史版本：v0 演示版（7 表 / 10 接口 / 5 角色）已作为兼容基线保留
+- **当前版本：Stage 2（一单制 + 箱管 + 单证存证）**：33 张表 / 9 角色 / 报价合同订单 / 一单制运单 / 箱管 / 单证 OCR 签章 / 95306 与港口 EDI Mock
+- 历史版本：Stage 1（平台基座与受理闭环）、v0 演示版（7 表 / 10 接口 / 5 角色）均已保留兼容
 - 技术栈：Vue 3 + Vite + TypeScript + Element Plus + ECharts ｜ Node 24 + Express 5 + TypeScript + MySQL 8
 - 全部外部系统 Mock（95306 / 港口 EDI / CA / 银行 / 税务 / GPS），但编码、价格、时效、报文结构按真实业务标准生成
 
@@ -66,25 +66,40 @@ npm run dev       # 同时启动 API(8080) 与前端(5173)
 9. `settlement01` 结算工作台生成账单（¥15080 = 三段费用之和）
 10. `admin01` 平台运营：看板 / 集成中心（报文详情、FAILED 重试）/ 审计日志
 
+## Stage 2 演示路径（一单制 / 箱管 / 单证存证）
+
+1. `mto01` 调度订单 → 自动签发主运单 + 3 张分段运单 + 单证 + 交接事件 + 哈希链存证
+2. 运单中心（`/waybills`）→ 一单制详情：事件时间轴、箱列表、单证列表、**存证校验通过**
+3. 单证中心（`/documents`）→ 上传 POD → Mock OCR 识别箱号/签收人/日期/数量 → 电子签章 → 下载
+4. 箱管中心（`/containers`）→ 箱详情：放箱 / 提箱 / 进场 / 装船 / 还箱 / 堆存 / 箱损维修
+5. `rail01` 铁路工作台：需求车提报（JT/T 1351 语义）→ 受理回执
+6. `sea01` 水路工作台：订舱 → 确认回执
+7. `admin01` 集成中心：95306 / 港口 EDI / CA 报文可追溯
+
+> Stage 1 的受理闭环（询价→报价→合同→下单→调度→签收→账单）继续保留可用。
+
 ## 自动化验收
 
 ```powershell
 npm run build                 # 后端 tsc --noEmit + 前端 vue-tsc/vite build
 npm run accept                # Stage 1 API 验收：53 项断言
+npm run accept:stage2         # Stage 2 API 验收：33 项断言
 npm run accept:v0             # v0 基线回归：34 项断言
-npm run e2e                   # UI E2E：13 阶段、16 张截图（本机 Edge，无头）
+npm run e2e                   # Stage 1 UI E2E：13 阶段、16 张截图（本机 Edge，无头）
+npm run e2e:stage2            # Stage 2 UI E2E：6 阶段、6 张截图
 ```
 
-- 验收记录：`docs/06-Stage1-验收报告.md`
-- 截图：`docs/screenshots/stage1/`（16 张）；v0 截图在 `docs/screenshots/`
-- 契约：`docs/04-Stage1-接口契约.md`（v1 增量）、`docs/02-接口契约.md`（v0 基线）
+- 验收报告：`docs/06-Stage1-验收报告.md`、`docs/09-Stage2-验收报告.md`
+- 截图：`docs/screenshots/stage1/`、`docs/screenshots/stage2/`；v0 截图在 `docs/screenshots/`
+- 契约：`docs/04-Stage1-接口契约.md`、`docs/08-Stage2-接口契约.md`（v0 基线：`docs/02`）
 
 ## 版本与路线图
 
 - **v0 演示版（已交付）**：7 表 / 10 接口 / 5 角色，下单→调度→三段运输→签收→分段账单
 - **v1 平台化演进（进行中）**：
   - ✅ **Stage 1 平台基座与受理闭环**（26 表、9 角色、报价/合同/订单 v1、集成与审计 Mock）
-  - ⏭ Stage 2：一单制运单 + 箱管 + 单证存证 + 95306/港口 EDI 适配器
+  - ✅ **Stage 2 一单制运单 + 箱管 + 单证存证 + 95306/港口 EDI**（33 表、哈希链存证、单证 OCR/签章）
+  - ⏭ Stage 3：调度中心 + 可视化大屏 + 异常预警 + IoT Mock
   - Stage 3：调度中心 + 可视化大屏 + 异常预警 + IoT Mock
   - Stage 4：结算中心 v2（计费引擎/对账/发票/支付/保理）+ 经营分析
   - Stage 5：集成中心 + 监管 + 运营后台 + 全链路验收

@@ -9,7 +9,10 @@
     "build": "npm --prefix api run build && npm --prefix web run build",
     "accept": "node scripts/accept.mjs",
     "accept:v0": "node scripts/accept-v0.mjs",
+    "accept:stage2": "node scripts/accept-stage2.mjs",
+    "accept:all": "node scripts/accept.mjs && node scripts/accept-stage2.mjs",
     "e2e": "node scripts/e2e-smoke.mjs",
+    "e2e:stage2": "node scripts/e2e-stage2.mjs",
     "db:init": "node api/db/init.mjs"
   },
   "devDependencies": {

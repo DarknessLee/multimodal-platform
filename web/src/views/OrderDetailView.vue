@@ -16,6 +16,9 @@
           </el-button>
         </PermissionGuard>
         <el-button v-if="detail?.waybill" data-testid="track-entry" @click="goTrack">运单跟踪</el-button>
+        <el-button v-if="detail?.waybill" data-testid="waybill-detail-entry" @click="goWaybillDetail">
+          一单制运单
+        </el-button>
         <el-button v-if="canSign" type="success" @click="goTrack">去签收</el-button>
         <PermissionGuard permission="bill:settle">
           <el-button
@@ -271,7 +274,7 @@
         <div class="card">
           <h3 class="card-title">
             <span class="card-title-text">最新轨迹</span>
-            <router-link v-if="detail.waybill" :to="`/waybills/${detail.waybill.id}`">查看全程轨迹 →</router-link>
+            <router-link v-if="detail.waybill" :to="`/waybills/${detail.waybill.id}/track`">查看全程轨迹 →</router-link>
           </h3>
           <el-timeline v-if="detail.latestTrack.length">
             <el-timeline-item
@@ -408,6 +411,15 @@ function goDispatch(): void {
 }
 
 function goTrack(): void {
+  const waybill = detail.value?.waybill;
+  if (!waybill) {
+    ElMessage.warning('该订单尚未生成运单');
+    return;
+  }
+  void router.push(`/waybills/${waybill.id}/track`);
+}
+
+function goWaybillDetail(): void {
   const waybill = detail.value?.waybill;
   if (!waybill) {
     ElMessage.warning('该订单尚未生成运单');

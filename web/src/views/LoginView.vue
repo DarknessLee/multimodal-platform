@@ -4,7 +4,7 @@
       <section class="login-brand">
         <div class="login-brand__logo">联</div>
         <h1 class="login-brand__title">多式联运供应链平台</h1>
-        <p class="login-brand__subtitle">Stage 1 · 询价 → 报价 → 合同 → 下单 → 调度 → 履约 → 签收 → 账单</p>
+        <p class="login-brand__subtitle">Stage 2 · 询价 → 合同 → 一单制运单 → 箱管 → 签收 → 单证存证</p>
 
         <div class="demo-title">演示账号（密码统一 demo123，点击一键登录）</div>
         <div class="demo-list">

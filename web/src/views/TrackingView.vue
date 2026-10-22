@@ -2,7 +2,7 @@
   <div class="page">
     <div class="page-header">
       <div>
-        <h2 class="page-title">运单跟踪</h2>
+        <h2 class="page-title" data-testid="page-title">运单跟踪</h2>
         <p v-if="track" class="page-subtitle">
           运单号 <span class="mono">{{ track.waybill.waybillNo }}</span> · 共
           {{ track.points.length }} 个轨迹节点
@@ -10,6 +10,8 @@
       </div>
       <div class="page-actions">
         <el-button @click="goOrders">返回订单列表</el-button>
+        <el-button data-testid="waybill-detail-link" @click="goWaybillDetail">一单制运单</el-button>
+        <el-button data-testid="document-center-link" @click="goDocuments">单证 / 箱动态</el-button>
         <el-button v-if="canSign" type="success" data-testid="sign-btn" @click="openSignDialog">
           签收运单
         </el-button>
@@ -217,6 +219,14 @@ async function load(): Promise<void> {
 
 function goOrders(): void {
   void router.push('/orders');
+}
+
+function goWaybillDetail(): void {
+  void router.push(`/waybills/${waybillId.value}`);
+}
+
+function goDocuments(): void {
+  void router.push(`/documents?bizType=WAYBILL&bizId=${waybillId.value}`);
 }
 
 function openSignDialog(): void {

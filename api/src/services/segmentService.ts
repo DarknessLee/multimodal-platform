@@ -1,10 +1,18 @@
-import { segmentStatusLabel } from '../config/labels';
+import { segmentStatusLabel, WAYBILL_EVENT_LABELS } from '../config/labels';
 import { txExec, txQuery, txQueryOne, withTransaction } from '../db/pool';
 import { ApiError } from '../errors';
 import { writeAudit } from '../middleware/audit';
+import { insertIntegrationMessage, portCodecoMessage, portCoarriMessage } from '../platform/edi';
+import {
+  appendContainerMovement,
+  appendWaybillEvent,
+  findNodeIdByName,
+  updateSegmentWaybillStatus,
+} from '../modules/waybill/events';
 import { buildActionTrackPoints } from '../mock/track';
 import type {
   AuthUser,
+  ContainerMovementType,
   ContainerRow,
   OrderRow,
   SegmentAction,
@@ -12,6 +20,7 @@ import type {
   SegmentRow,
   SegmentStatus,
   TrackPointDto,
+  WaybillEventType,
   WaybillRow,
 } from '../types';
 import { formatDateTime, nowDate } from '../utils/datetime';
@@ -244,6 +253,122 @@ export async function updateSegmentStatus(
         "UPDATE container SET status = 'ARRIVED', updated_at = ? WHERE order_id = ? AND status IN ('GATE_IN', 'LOADED', 'IN_TRANSIT')",
         [at, order.id],
       );
+    }
+
+    // ── Stage 2 自动联动：交接事件 + 哈希链存证 + 箱动态 + 港口/铁路 EDI ────
+    const masterWaybill = await txQueryOne<WaybillRow>(conn, 'SELECT * FROM waybill WHERE id = ?', [
+      segment.waybill_id,
+    ]);
+    if (masterWaybill) {
+      const eventType: WaybillEventType =
+        action === 'ACCEPT' ? 'PICKUP' : action === 'DEPART' ? 'DEPART' : action === 'GATE_IN' ? 'GATE_IN' : 'ARRIVE';
+      const nodeName = action === 'ACCEPT' || action === 'GATE_IN' ? segment.start_node : segment.end_node;
+      const nodeId = await findNodeIdByName(conn, nodeName);
+      await appendWaybillEvent(conn, {
+        waybillId: Number(masterWaybill.id),
+        segmentId: Number(segment.id),
+        eventType,
+        nodeId,
+        operatorUserId: user.uid,
+        description: `${WAYBILL_EVENT_LABELS[eventType]}（${segment.mode}）`,
+        payload: {
+          orderNo: order.order_no,
+          waybillNo: masterWaybill.waybill_no,
+          mode: segment.mode,
+          node: nodeName,
+          action,
+        },
+        occurredAt: at,
+      });
+      if (action === 'DEPART' || action === 'GATE_IN') {
+        await updateSegmentWaybillStatus(conn, Number(masterWaybill.id), segment.mode, 'IN_TRANSIT');
+      }
+      if (action === 'ARRIVE') {
+        await updateSegmentWaybillStatus(conn, Number(masterWaybill.id), segment.mode, 'ARRIVED');
+      }
+
+      const orderContainers = await txQuery<ContainerRow>(
+        conn,
+        'SELECT * FROM container WHERE order_id = ? ORDER BY id ASC',
+        [order.id],
+      );
+      const movementType: ContainerMovementType =
+        action === 'ACCEPT'
+          ? 'PICKUP'
+          : action === 'DEPART'
+            ? 'DEPART'
+            : action === 'GATE_IN'
+              ? 'GATE_IN'
+              : segment.mode === 'SEA'
+                ? 'DISCHARGE'
+                : 'ARRIVE';
+      for (const container of orderContainers) {
+        await appendContainerMovement(conn, {
+          containerId: Number(container.id),
+          waybillId: Number(masterWaybill.id),
+          movementType,
+          nodeId,
+          operatorUserId: user.uid,
+          conditionText: conditionText ?? container.condition_text,
+          remark: `${WAYBILL_EVENT_LABELS[eventType]}（${segment.mode}）`,
+          occurredAt: at,
+        });
+        await txExec(
+          conn,
+          `UPDATE container SET current_node_id = COALESCE(?, current_node_id),
+             current_waybill_id = COALESCE(current_waybill_id, ?), updated_at = ? WHERE id = ?`,
+          [nodeId, masterWaybill.id, at, container.id],
+        );
+      }
+
+      const nodeRow = await txQueryOne<{ node_code: string }>(
+        conn,
+        'SELECT node_code FROM port_station WHERE node_name = ? LIMIT 1',
+        [nodeName],
+      );
+      const containerNos = orderContainers.map((container) => container.container_no);
+      if (segment.mode === 'SEA' && action === 'GATE_IN') {
+        await insertIntegrationMessage(
+          conn,
+          portCodecoMessage({
+            waybillId: Number(masterWaybill.id),
+            waybillNo: masterWaybill.waybill_no,
+            portCode: nodeRow?.node_code ?? 'CNSHA',
+            moveType: 'GATE_IN',
+            containerNos,
+            eventTime: at,
+          }),
+        );
+      } else if (segment.mode === 'SEA' && action === 'ARRIVE') {
+        await insertIntegrationMessage(
+          conn,
+          portCoarriMessage({
+            waybillId: Number(masterWaybill.id),
+            waybillNo: masterWaybill.waybill_no,
+            portCode: nodeRow?.node_code ?? 'CNWUH',
+            moveType: 'DISCHARGE',
+            containerNos,
+            eventTime: at,
+          }),
+        );
+      } else if (segment.mode === 'RAIL' && action === 'ARRIVE') {
+        await insertIntegrationMessage(conn, {
+          systemCode: 'RAIL_95306',
+          systemName: '铁路 95306',
+          direction: 'OUT',
+          msgType: 'RAIL_ARRIVE_REPORT',
+          standard: 'JT/T 1351-2020 语义',
+          relatedType: 'WAYBILL',
+          relatedId: Number(masterWaybill.id),
+          payload: {
+            waybillNo: masterWaybill.waybill_no,
+            orderNo: order.order_no,
+            station: nodeRow?.node_code ?? '',
+            arriveTime: at,
+            containerNos,
+          },
+        });
+      }
     }
 
     // 审计（写操作）

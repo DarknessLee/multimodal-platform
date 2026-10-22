@@ -9,7 +9,8 @@ export type DocTable =
   | 'quote'
   | 'contract'
   | 'price_rule'
-  | 'integration_message';
+  | 'integration_message'
+  | 'document';
 
 export type DocColumn =
   | 'order_no'
@@ -18,7 +19,8 @@ export type DocColumn =
   | 'quote_no'
   | 'contract_no'
   | 'rule_no'
-  | 'msg_no';
+  | 'msg_no'
+  | 'doc_no';
 
 export interface DocNoOptions {
   table: DocTable;
@@ -29,13 +31,16 @@ export interface DocNoOptions {
   width: number;
 }
 
-/** 事务内生成唯一单据号 */
+/** 事务内生成唯一单据号（按数值后缀排序，兼容历史数据位数差异） */
 export async function nextDocNo(conn: PoolConnection, options: DocNoOptions): Promise<string> {
   const { table, column, prefix, width } = options;
   const row = await txQueryOne<Record<string, string>>(
     conn,
-    `SELECT ${column} AS no FROM ${table} WHERE ${column} LIKE ? ORDER BY ${column} DESC LIMIT 1`,
-    [`${prefix}%`],
+    `SELECT ${column} AS no FROM ${table}
+      WHERE ${column} LIKE ?
+      ORDER BY CAST(SUBSTRING(${column}, ? + 1) AS UNSIGNED) DESC, ${column} DESC
+      LIMIT 1`,
+    [`${prefix}%`, prefix.length],
   );
   const last = row?.no;
   const parsed = last ? Number(last.slice(prefix.length)) : 0;

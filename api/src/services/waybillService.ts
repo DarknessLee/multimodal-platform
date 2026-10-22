@@ -4,8 +4,10 @@ import { ApiError } from '../errors';
 import { writeAudit } from '../middleware/audit';
 import { buildSignTrackPoint } from '../mock/track';
 import { emitEvent } from '../platform/eventBus';
+import { nextDocNo } from '../platform/sequence';
+import { appendWaybillEvent, signAllSegmentWaybills } from '../modules/waybill/events';
 import type { AuthUser, OrderRow, SegmentRow, TrackPointRow, WaybillRow } from '../types';
-import { formatDateTime, nowDate } from '../utils/datetime';
+import { formatDateTime, nowDate, todayCompact } from '../utils/datetime';
 import { dtoSegment, dtoTrackPoint } from './mappers';
 
 /** GET /api/waybills/:id/track：运单 + 分段 + 全量轨迹（按 occurredAt, seq 升序） */
@@ -172,6 +174,50 @@ export async function signWaybill(
       },
       ip,
     });
+
+    // Stage 2：签收事件/存证 + 分段运单同步签收 + 回单占位（待上传）
+    await appendWaybillEvent(conn, {
+      waybillId: Number(lockedWaybill.id),
+      eventType: 'SIGN',
+      operatorUserId: user.uid,
+      description: '货主签收',
+      payload: {
+        orderNo: lockedOrder.order_no,
+        waybillNo: lockedWaybill.waybill_no,
+        signerName,
+        signedAt: at,
+      },
+      occurredAt: at,
+    });
+    await signAllSegmentWaybills(conn, Number(lockedWaybill.id), signerName, at);
+
+    const existingPod = await txQueryOne<{ id: number }>(
+      conn,
+      "SELECT id FROM document WHERE doc_type = 'POD' AND biz_type = 'WAYBILL' AND biz_id = ? LIMIT 1",
+      [lockedWaybill.id],
+    );
+    if (!existingPod) {
+      const docNo = await nextDocNo(conn, {
+        table: 'document',
+        column: 'doc_no',
+        prefix: `DOC${todayCompact()}`,
+        width: 5,
+      });
+      await txExec(
+        conn,
+        `INSERT INTO document (doc_no, doc_type, biz_type, biz_id, file_name, mime_type, file_path, file_size,
+           ocr_status, sign_status, created_by, created_at, updated_at)
+         VALUES (?, 'POD', 'WAYBILL', ?, ?, 'text/plain', NULL, 0, 'NONE', 'UNSIGNED', ?, ?, ?)`,
+        [
+          docNo,
+          lockedWaybill.id,
+          `${lockedWaybill.waybill_no}-签收回单.txt`,
+          user.uid,
+          at,
+          at,
+        ],
+      );
+    }
 
     return {
       waybill: {

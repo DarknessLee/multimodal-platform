@@ -4,12 +4,16 @@ import type {
   BillStatus,
   CalcMethod,
   ChargeType,
+  ContainerMovementType,
   ContainerStatus,
   ContractStatus,
   ContractType,
+  DocSignStatus,
+  DocType,
   IntegrationStatus,
   NodeType,
   NotificationType,
+  OcrStatus,
   OrderSource,
   OrderStatus,
   OrderType,
@@ -17,9 +21,13 @@ import type {
   Priority,
   QuoteStatus,
   Role,
+  SealOwnerType,
   SegmentMode,
   SegmentStatus,
+  StorageStatus,
+  WaybillEventType,
   WaybillStatus,
+  WaybillType,
 } from '../types';
 
 export const ROLE_LABELS: Record<Role, string> = {
@@ -90,11 +98,15 @@ export const BILL_STATUS_LABELS: Record<BillStatus, string> = {
 
 export const CONTAINER_STATUS_LABELS: Record<ContainerStatus, string> = {
   EMPTY: '空箱',
+  RELEASED: '已放箱',
   GATE_IN: '已进场',
   LOADED: '已装载',
   IN_TRANSIT: '运输中',
   ARRIVED: '已到达',
   DELIVERED: '已送达',
+  RETURNED: '已还箱',
+  IN_REPAIR: '维修中',
+  AT_DEPOT: '在堆场',
 };
 
 export const QUOTE_STATUS_LABELS: Record<QuoteStatus, string> = {
@@ -196,3 +208,76 @@ export const ORDER_STATUS_ORDER: OrderStatus[] = [
   'BILLED',
   'CANCELLED',
 ];
+
+// ── Stage 2：一单制 / 单证 / 存证 / 箱管 ────────────────────────────────────
+
+export const WAYBILL_TYPE_LABELS: Record<WaybillType, string> = {
+  MASTER: '主运单',
+  SEGMENT: '分段运单',
+};
+
+export const DOC_TYPE_LABELS: Record<DocType, string> = {
+  ORDER_CONFIRM: '订单确认书',
+  WAYBILL_MASTER: '主运单',
+  WAYBILL_SEGMENT: '分段运单',
+  PACKING_LIST: '装箱单',
+  POD: '签收回单',
+  OTHER: '其他单证',
+};
+
+export const OCR_STATUS_LABELS: Record<OcrStatus, string> = {
+  NONE: '未识别',
+  PENDING: '识别中',
+  SUCCESS: '识别成功',
+  FAILED: '识别失败',
+};
+
+export const DOC_SIGN_STATUS_LABELS: Record<DocSignStatus, string> = {
+  UNSIGNED: '未签章',
+  SIGNED: '已签章',
+};
+
+export const WAYBILL_EVENT_LABELS: Record<WaybillEventType, string> = {
+  ISSUE: '运单签发',
+  RELEASE: '放箱',
+  PICKUP: '提箱',
+  GATE_IN: '进场',
+  LOAD: '装车/装船',
+  DEPART: '发运',
+  ARRIVE: '到达',
+  DISCHARGE: '卸箱/卸船',
+  HANDOVER: '交接',
+  POD: '回单',
+  SIGN: '签章/签收',
+  NOTARIZE: '存证',
+};
+
+export const CONTAINER_MOVEMENT_LABELS: Record<ContainerMovementType, string> = {
+  RELEASE: '放箱',
+  PICKUP: '提箱',
+  GATE_IN: '进场',
+  LOAD: '装箱/装船',
+  DEPART: '发运',
+  ARRIVE: '到达',
+  DISCHARGE: '卸箱/卸船',
+  GATE_OUT: '出场',
+  RETURN: '还箱',
+  REPAIR: '维修',
+};
+
+export const STORAGE_STATUS_LABELS: Record<StorageStatus, string> = {
+  STACKED: '堆存中',
+  RELEASED: '已提离',
+};
+
+export const SEAL_OWNER_LABELS: Record<SealOwnerType, string> = {
+  PLATFORM: '平台',
+  CUSTOMER: '客户',
+  CARRIER: '承运人',
+  TERMINAL: '港站',
+};
+
+/** 运输方式（既有 MODE_LABELS 不含空值兜底） */
+export function modeLabel(mode: SegmentMode | null | undefined): string {
+  return mode ? MODE_LABELS[mode] : '';
+}

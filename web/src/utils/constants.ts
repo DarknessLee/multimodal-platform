@@ -117,6 +117,11 @@ const MENU_CODES = [
   'menu:bills',
   'menu:integration',
   'menu:audit',
+  'menu:waybills',
+  'menu:containers',
+  'menu:documents',
+  'menu:rail',
+  'menu:sea',
 ];
 
 const BUTTON_CODES = [
@@ -136,6 +141,15 @@ const BUTTON_CODES = [
   'segment:status',
   'waybill:sign',
   'bill:settle',
+  'waybill:notarize',
+  'document:upload',
+  'document:sign',
+  'document:ocr',
+  'container:release',
+  'container:movement',
+  'container:return',
+  'rail:apply',
+  'sea:book',
 ];
 
 export const ROLE_FALLBACK_PERMISSIONS: Record<string, string[]> = {
@@ -146,12 +160,16 @@ export const ROLE_FALLBACK_PERMISSIONS: Record<string, string[]> = {
     'menu:contracts',
     'menu:track',
     'menu:bills',
+    'menu:waybills',
+    'menu:documents',
     'order:create',
     'order:cancel',
     'quote:create',
     'quote:accept',
     'contract:sign',
     'waybill:sign',
+    'document:upload',
+    'document:sign',
   ],
   FORWARDER: [
     'menu:dashboard',
@@ -160,6 +178,8 @@ export const ROLE_FALLBACK_PERMISSIONS: Record<string, string[]> = {
     'menu:contracts',
     'menu:customers',
     'menu:track',
+    'menu:waybills',
+    'menu:documents',
     'order:create',
     'order:cancel',
     'quote:create',
@@ -169,6 +189,7 @@ export const ROLE_FALLBACK_PERMISSIONS: Record<string, string[]> = {
     'contract:send',
     'contract:sign',
     'customer:create',
+    'document:upload',
   ],
   MTO: [
     'menu:dashboard',
@@ -184,6 +205,9 @@ export const ROLE_FALLBACK_PERMISSIONS: Record<string, string[]> = {
     'menu:bills',
     'menu:integration',
     'menu:audit',
+    'menu:waybills',
+    'menu:containers',
+    'menu:documents',
     'order:create',
     'order:cancel',
     'order:dispatch',
@@ -196,12 +220,46 @@ export const ROLE_FALLBACK_PERMISSIONS: Record<string, string[]> = {
     'customer:create',
     'partner:create',
     'integration:retry',
+    'waybill:notarize',
+    'document:upload',
+    'document:sign',
+    'document:ocr',
+    'container:release',
+    'container:movement',
+    'container:return',
   ],
-  CARRIER: ['menu:dashboard', 'menu:orders', 'menu:tasks', 'menu:track', 'segment:status'],
-  RAIL_CARRIER: ['menu:dashboard', 'menu:orders', 'menu:track'],
-  SEA_CARRIER: ['menu:dashboard', 'menu:orders', 'menu:track'],
-  TERMINAL: ['menu:dashboard', 'menu:terminal', 'menu:track', 'segment:status'],
-  SETTLEMENT: ['menu:dashboard', 'menu:settlement', 'menu:bills', 'menu:orders', 'bill:settle'],
+  CARRIER: [
+    'menu:dashboard',
+    'menu:orders',
+    'menu:tasks',
+    'menu:track',
+    'menu:waybills',
+    'menu:containers',
+    'segment:status',
+    'container:movement',
+  ],
+  RAIL_CARRIER: ['menu:dashboard', 'menu:orders', 'menu:track', 'menu:waybills', 'menu:rail', 'rail:apply'],
+  SEA_CARRIER: ['menu:dashboard', 'menu:orders', 'menu:track', 'menu:waybills', 'menu:sea', 'sea:book'],
+  TERMINAL: [
+    'menu:dashboard',
+    'menu:terminal',
+    'menu:track',
+    'menu:waybills',
+    'menu:containers',
+    'segment:status',
+    'container:movement',
+    'container:return',
+    'document:upload',
+  ],
+  SETTLEMENT: [
+    'menu:dashboard',
+    'menu:settlement',
+    'menu:bills',
+    'menu:orders',
+    'menu:waybills',
+    'menu:documents',
+    'bill:settle',
+  ],
   ADMIN: [...MENU_CODES, ...BUTTON_CODES],
 };
 
@@ -213,18 +271,23 @@ export interface MenuDef {
   group: string;
 }
 
-/** 15 个平台菜单（按权限码渲染） */
+/** 20 个平台菜单（Stage 2，按权限码渲染） */
 export const MENU_DEFS: MenuDef[] = [
   { code: 'menu:dashboard', label: '平台总览', path: '/dashboard', testid: 'nav-dashboard', group: '业务受理' },
   { code: 'menu:orders', label: '订单中心', path: '/orders', testid: 'nav-orders', group: '业务受理' },
   { code: 'menu:quotes', label: '报价工作台', path: '/quotes', testid: 'nav-quotes', group: '业务受理' },
   { code: 'menu:contracts', label: '合同管理', path: '/contracts', testid: 'nav-contracts', group: '业务受理' },
+  { code: 'menu:waybills', label: '运单中心', path: '/waybills', testid: 'nav-waybills', group: '业务受理' },
+  { code: 'menu:documents', label: '单证中心', path: '/documents', testid: 'nav-documents', group: '业务受理' },
   { code: 'menu:customers', label: '客户管理', path: '/master/customers', testid: 'nav-customers', group: '主数据' },
   { code: 'menu:partners', label: '伙伴管理', path: '/master/partners', testid: 'nav-partners', group: '主数据' },
   { code: 'menu:master', label: '主数据', path: '/master/data', testid: 'nav-master', group: '主数据' },
   { code: 'menu:dispatch', label: '调度中心', path: '/orders?view=dispatch', testid: 'nav-dispatch', group: '履约执行' },
   { code: 'menu:tasks', label: '运输任务', path: '/tasks', testid: 'nav-tasks', group: '履约执行' },
   { code: 'menu:terminal', label: '港站作业', path: '/terminal', testid: 'nav-terminal', group: '履约执行' },
+  { code: 'menu:containers', label: '箱管中心', path: '/containers', testid: 'nav-containers', group: '履约执行' },
+  { code: 'menu:rail', label: '铁路工作台', path: '/rail/tasks', testid: 'nav-rail', group: '履约执行' },
+  { code: 'menu:sea', label: '水路工作台', path: '/sea/tasks', testid: 'nav-sea', group: '履约执行' },
   { code: 'menu:track', label: '运单跟踪', path: '/orders?view=track', testid: 'nav-track', group: '履约执行' },
   { code: 'menu:settlement', label: '结算工作台', path: '/settlement', testid: 'nav-settlement', group: '履约执行' },
   { code: 'menu:bills', label: '账单中心', path: '/orders?view=bills', testid: 'nav-bills', group: '履约执行' },
@@ -295,11 +358,15 @@ export const BILL_STATUS_LABELS: Record<string, string> = {
 
 export const CONTAINER_STATUS_LABELS: Record<string, string> = {
   EMPTY: '空箱',
+  RELEASED: '已放箱',
   GATE_IN: '已进场',
   LOADED: '已装箱',
   IN_TRANSIT: '运输中',
   ARRIVED: '已到达',
   DELIVERED: '已送达',
+  RETURNED: '已还箱',
+  IN_REPAIR: '维修中',
+  AT_DEPOT: '在堆场',
 };
 
 export const MODE_LABELS: Record<string, string> = {
@@ -544,4 +611,167 @@ export function integrationStatusLabel(status?: string | null): string {
 export function notificationTypeLabel(type?: string | null): string {
   if (!type) return '—';
   return NOTIFICATION_TYPE_LABELS[type] ?? type;
+}
+
+// ───────────────────────────── Stage 2：一单制 / 单证 / 箱管 / 铁路水路 ─────────────────────────────
+
+export const WAYBILL_TYPE_LABELS: Record<string, string> = {
+  MASTER: '主运单',
+  SEGMENT: '分段运单',
+};
+
+export const WAYBILL_TYPE_OPTIONS = Object.entries(WAYBILL_TYPE_LABELS).map(([value, label]) => ({
+  value,
+  label,
+}));
+
+export const WAYBILL_STATUS_OPTIONS = Object.entries(WAYBILL_STATUS_LABELS).map(([value, label]) => ({
+  value,
+  label,
+}));
+
+export const EVENT_TYPE_LABELS: Record<string, string> = {
+  ISSUE: '运单签发',
+  RELEASE: '放箱',
+  PICKUP: '提箱',
+  GATE_IN: '进场',
+  LOAD: '装箱',
+  DEPART: '发运',
+  ARRIVE: '到达',
+  DISCHARGE: '卸箱',
+  HANDOVER: '交接',
+  POD: '回单',
+  SIGN: '签章',
+  NOTARIZE: '存证',
+};
+
+export const DOC_TYPE_LABELS: Record<string, string> = {
+  ORDER_CONFIRM: '订单确认单',
+  WAYBILL_MASTER: '主运单',
+  WAYBILL_SEGMENT: '分段运单',
+  PACKING_LIST: '装箱单',
+  POD: '回单',
+  OTHER: '其他单证',
+};
+
+export const DOC_TYPE_OPTIONS = Object.entries(DOC_TYPE_LABELS).map(([value, label]) => ({ value, label }));
+
+export const DOC_BIZ_TYPE_LABELS: Record<string, string> = {
+  ORDER: '订单',
+  WAYBILL: '运单',
+  BILL: '账单',
+  CONTRACT: '合同',
+};
+
+export const DOC_BIZ_TYPE_OPTIONS = Object.entries(DOC_BIZ_TYPE_LABELS).map(([value, label]) => ({
+  value,
+  label,
+}));
+
+export const OCR_STATUS_LABELS: Record<string, string> = {
+  NONE: '未识别',
+  PENDING: '识别中',
+  SUCCESS: '识别成功',
+  FAILED: '识别失败',
+};
+
+export const OCR_STATUS_OPTIONS = Object.entries(OCR_STATUS_LABELS).map(([value, label]) => ({
+  value,
+  label,
+}));
+
+export const SIGN_STATUS_LABELS: Record<string, string> = {
+  UNSIGNED: '未签章',
+  SIGNED: '已签章',
+};
+
+export const MOVEMENT_TYPE_LABELS: Record<string, string> = {
+  RELEASE: '放箱',
+  PICKUP: '提箱',
+  GATE_IN: '进场',
+  LOAD: '装箱',
+  DEPART: '发运',
+  ARRIVE: '到达',
+  DISCHARGE: '卸箱',
+  GATE_OUT: '出场',
+  RETURN: '还箱',
+  REPAIR: '维修',
+};
+
+export const MOVEMENT_TYPE_OPTIONS = Object.entries(MOVEMENT_TYPE_LABELS)
+  .filter(([value]) => ['PICKUP', 'GATE_IN', 'LOAD', 'DEPART', 'ARRIVE', 'DISCHARGE', 'GATE_OUT'].includes(value))
+  .map(([value, label]) => ({ value, label }));
+
+export const STORAGE_STATUS_LABELS: Record<string, string> = {
+  STACKED: '堆存中',
+  RELEASED: '已提离',
+};
+
+export const RAIL_DEMAND_STATUS_LABELS: Record<string, string> = {
+  NONE: '未提报',
+  PENDING: '待受理',
+  APPLIED: '已提报',
+  ACCEPTED: '已受理',
+  CONFIRMED: '已受理',
+  REJECTED: '已驳回',
+  FAILED: '提报失败',
+};
+
+export const SEA_BOOKING_STATUS_LABELS: Record<string, string> = {
+  NOT_BOOKED: '未订舱',
+  NONE: '未订舱',
+  PENDING: '待确认',
+  BOOKED: '已订舱',
+  CONFIRMED: '已确认舱位',
+  FAILED: '订舱失败',
+};
+
+export function waybillTypeLabel(type?: string | null): string {
+  if (!type) return '—';
+  return WAYBILL_TYPE_LABELS[type] ?? type;
+}
+
+export function eventTypeLabel(type?: string | null): string {
+  if (!type) return '—';
+  return EVENT_TYPE_LABELS[type] ?? type;
+}
+
+export function docTypeLabel(type?: string | null): string {
+  if (!type) return '—';
+  return DOC_TYPE_LABELS[type] ?? type;
+}
+
+export function docBizTypeLabel(type?: string | null): string {
+  if (!type) return '—';
+  return DOC_BIZ_TYPE_LABELS[type] ?? type;
+}
+
+export function ocrStatusLabel(status?: string | null): string {
+  if (!status) return '—';
+  return OCR_STATUS_LABELS[status] ?? status;
+}
+
+export function signStatusLabel(status?: string | null): string {
+  if (!status) return '—';
+  return SIGN_STATUS_LABELS[status] ?? status;
+}
+
+export function movementTypeLabel(type?: string | null): string {
+  if (!type) return '—';
+  return MOVEMENT_TYPE_LABELS[type] ?? type;
+}
+
+export function storageStatusLabel(status?: string | null): string {
+  if (!status) return '—';
+  return STORAGE_STATUS_LABELS[status] ?? status;
+}
+
+export function railDemandStatusLabel(status?: string | null): string {
+  if (!status) return '—';
+  return RAIL_DEMAND_STATUS_LABELS[status] ?? status;
+}
+
+export function seaBookingStatusLabel(status?: string | null): string {
+  if (!status) return '—';
+  return SEA_BOOKING_STATUS_LABELS[status] ?? status;
 }

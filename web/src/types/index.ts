@@ -737,3 +737,291 @@ export interface NotificationItem {
   readFlag: boolean | number;
   createdAt: string;
 }
+
+// ───────────────────────────── Stage 2：一单制 / 单证 / 存证 / 箱管 / 铁路水路 ─────────────────────────────
+
+export interface WaybillListItem {
+  id: number;
+  waybillNo: string;
+  waybillType: string;
+  waybillTypeLabel: string;
+  orderId: number | null;
+  orderNo: string | null;
+  customerName: string | null;
+  cargoName: string | null;
+  containerCount: number;
+  segmentCount: number;
+  status: string;
+  statusLabel: string;
+  issuedAt: string | null;
+  documentCount: number;
+  notarizedCount: number;
+}
+
+export interface WaybillEvent {
+  id: number;
+  waybillId?: number;
+  segmentId?: number | null;
+  eventType: string;
+  eventTypeLabel: string;
+  occurredAt: string;
+  nodeName?: string | null;
+  operator?: string | null;
+  description?: string | null;
+  prevHash?: string | null;
+  hash?: string | null;
+  txId?: string | null;
+  blockHeight?: number | null;
+}
+
+export interface WaybillContainerItem {
+  id: number;
+  containerNo: string;
+  type: string;
+  status: string;
+  statusLabel: string;
+  currentNode?: string | null;
+  sealNo?: string | null;
+}
+
+export interface SegmentWaybill {
+  id: number;
+  waybillNo: string;
+  mode: string;
+  modeLabel?: string;
+  carrierName: string;
+  status: string;
+  statusLabel?: string;
+}
+
+export interface WaybillDocBrief {
+  id: number;
+  docNo: string;
+  docType: string;
+  docTypeLabel: string;
+  fileName: string;
+  ocrStatus: string;
+  ocrStatusLabel?: string;
+  signStatus: string;
+  signStatusLabel?: string;
+  notarizeTxId?: string | null;
+}
+
+export interface WaybillNotarizeSummary {
+  verified: boolean;
+  recordCount: number;
+  lastTxId: string | null;
+}
+
+export interface WaybillDetail {
+  waybill: {
+    id: number;
+    waybillNo: string;
+    waybillType: string;
+    waybillTypeLabel?: string;
+    status: string;
+    statusLabel: string;
+    orderId: number | null;
+    issuedAt: string | null;
+    notarizeTxId: string | null;
+  };
+  order: { id: number; orderNo: string; customerName: string | null; cargoName: string | null } | null;
+  segments: Array<{
+    id: number;
+    seq: number;
+    mode: string;
+    modeLabel: string;
+    carrierName: string;
+    status: string;
+    statusLabel: string;
+    startNode?: string;
+    endNode?: string;
+  }>;
+  segmentWaybills: SegmentWaybill[];
+  containers: WaybillContainerItem[];
+  events: WaybillEvent[];
+  documents: WaybillDocBrief[];
+  notarize: WaybillNotarizeSummary | null;
+}
+
+export interface NotarizeRecord {
+  id: number;
+  bizType: string;
+  bizId: number;
+  eventType: string;
+  payloadHash: string;
+  prevHash: string;
+  hash: string;
+  blockHeight: number;
+  txId: string;
+  createdAt: string;
+}
+
+export interface NotarizeVerifyResult {
+  valid: boolean;
+  record: NotarizeRecord;
+  chainLength: number;
+  message: string;
+}
+
+export interface DocumentListItem {
+  id: number;
+  docNo: string;
+  docType: string;
+  docTypeLabel: string;
+  bizType: string;
+  bizId: number;
+  fileName: string;
+  fileSize: number;
+  contentHash: string;
+  ocrStatus: string;
+  ocrStatusLabel: string;
+  signStatus: string;
+  signStatusLabel?: string;
+  notarizeTxId: string | null;
+  createdAt: string;
+}
+
+export type OcrResultData = Record<string, unknown>;
+
+export interface DocumentDetail extends DocumentListItem {
+  mimeType?: string;
+  ocrResult?: OcrResultData | null;
+  signHash?: string | null;
+  sealId?: number | null;
+  signerName?: string | null;
+  signedAt?: string | null;
+}
+
+export interface CreateDocumentPayload {
+  docType: string;
+  bizType: string;
+  bizId: number;
+  fileName: string;
+  mimeType: string;
+  contentBase64: string;
+}
+
+export interface ContainerListItem {
+  id: number;
+  containerNo: string;
+  type: string;
+  status: string;
+  statusLabel: string;
+  currentNode: string | null;
+  currentWaybillId: number | null;
+  currentWaybillNo: string | null;
+  ownerPartnerName: string | null;
+  conditionText: string | null;
+  repairFee: number;
+}
+
+export interface ContainerMovement {
+  id: number;
+  movementType: string;
+  movementLabel: string;
+  nodeName: string | null;
+  occurredAt: string;
+  conditionText: string | null;
+  operator: string | null;
+  remark?: string | null;
+}
+
+export interface DepotStorageItem {
+  id: number;
+  containerNo?: string | null;
+  nodeName: string;
+  startAt: string;
+  endAt: string | null;
+  storageDays: number;
+  feeAmount: number;
+  status: string;
+  statusLabel?: string;
+}
+
+export interface ContainerDetail {
+  container: {
+    id: number;
+    containerNo: string;
+    type: string;
+    status: string;
+    statusLabel: string;
+    currentNode?: string | null;
+    conditionText?: string | null;
+    repairFee?: number;
+  };
+  waybill: { id: number; waybillNo: string } | null;
+  movements: ContainerMovement[];
+  storage: DepotStorageItem[];
+}
+
+export interface ContainerReleasePayload {
+  waybillId: number;
+  nodeId?: number | null;
+}
+
+export interface ContainerMovementPayload {
+  movementType: string;
+  nodeId?: number | null;
+  conditionText?: string;
+  remark?: string;
+  photoUrl?: string | null;
+}
+
+export interface RailTask {
+  waybillId: number;
+  waybillNo: string;
+  orderNo: string;
+  fromStation: string;
+  toStation: string;
+  containerCount: number;
+  segmentStatus: string;
+  segmentStatusLabel?: string;
+  demandStatus: string;
+  demandStatusLabel?: string;
+  lastMessageAt: string | null;
+  messageId?: number | null;
+}
+
+export interface SeaTask {
+  waybillId: number;
+  waybillNo: string;
+  orderNo: string;
+  fromPort: string;
+  toPort: string;
+  containerCount: number;
+  segmentStatus: string;
+  segmentStatusLabel?: string;
+  bookingStatus: string;
+  bookingStatusLabel?: string;
+  lastMessageAt: string | null;
+  messageId?: number | null;
+}
+
+export interface RailApplyResult {
+  messageId: number;
+  msgNo: string;
+  status: string;
+  statusLabel?: string;
+}
+
+export interface RailConfirmResult {
+  status: string;
+  matchedCars?: number;
+  message: string;
+}
+
+export interface SeaBookResult {
+  messageId: number;
+  msgNo: string;
+  status: string;
+  statusLabel?: string;
+}
+
+export interface SeaConfirmResult {
+  status: string;
+  vesselName?: string;
+  voyageNo?: string;
+  slotNo?: string;
+  message: string;
+}

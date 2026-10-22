@@ -314,7 +314,7 @@ function goTrack(waybillId: number | null): void {
     ElMessage.warning('该订单暂未生成运单');
     return;
   }
-  void router.push(`/waybills/${waybillId}`);
+  void router.push(`/waybills/${waybillId}/track`);
 }
 
 async function cancel(order: OrderListItem): Promise<void> {

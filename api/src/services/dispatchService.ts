@@ -4,7 +4,10 @@ import { writeAudit } from '../middleware/audit';
 import { emitEvent } from '../platform/eventBus';
 import { ROAD_PLANNED_END_HOURS, ROAD_PLANNED_START_HOURS, SEA_SEGMENT, RAIL_SEGMENT, findRoadCarrier } from '../mock/carriers';
 import { routeEndNode, routeStartNode } from '../mock/routes';
-import type { AuthUser, OrderRow, SegmentRow, SegmentMode } from '../types';
+import { WAYBILL_STATUS_LABELS } from '../config/labels';
+import { documentDto } from '../modules/documents/service';
+import { issueWaybillsForDispatch } from '../modules/waybill/issueService';
+import type { AuthUser, ContainerRow, OrderRow, SegmentRow, SegmentMode, WaybillRow } from '../types';
 import { addHours, formatDateTime, nowDate, todayCompact } from '../utils/datetime';
 import { dtoSegment } from './mappers';
 import { nextDailyNo } from './sequence';
@@ -56,8 +59,9 @@ export async function dispatchOrder(
     );
 
     const at = formatDateTime(nowDate());
+    const issuedAt = at;
     const base = nowDate();
-    const waybillNo = await nextDailyNo(conn, 'waybill', 'waybill_no', `WB${todayCompact()}`, 3);
+    const waybillNo = await nextDailyNo(conn, 'waybill', 'waybill_no', `WB${todayCompact()}`, 5);
     const waybillResult = await txExec(
       conn,
       `INSERT INTO waybill (waybill_no, order_id, status, created_at, updated_at)
@@ -168,12 +172,48 @@ export async function dispatchOrder(
       'SELECT * FROM waybill_segment WHERE waybill_id = ? ORDER BY seq ASC',
       [waybillId],
     );
+    const containers = await txQuery<ContainerRow>(
+      conn,
+      'SELECT * FROM container WHERE order_id = ? ORDER BY id ASC',
+      [orderId],
+    );
+    const masterWaybill = await txQueryOne<WaybillRow>(conn, 'SELECT * FROM waybill WHERE id = ?', [waybillId]);
+    if (!masterWaybill) {
+      throw new ApiError(50000, '运单创建后读取失败');
+    }
+
+    // Stage 2：一单制自动签发（主运单/分段运单/单证/ISSUE 事件/哈希链存证）
+    const issued = await issueWaybillsForDispatch(conn, {
+      master: masterWaybill,
+      order,
+      segments,
+      containers,
+      user,
+    });
+    const segmentByMode = new Map(segments.map((segment) => [segment.mode, segment]));
 
     return {
       orderId: Number(orderId),
       waybillId,
       waybillNo,
       segments: segments.map(dtoSegment),
+      // Stage 2 新增字段（不破坏 v0 结构）
+      waybillType: 'MASTER' as const,
+      waybillTypeLabel: '主运单',
+      issuedAt,
+      segmentWaybills: issued.segmentWaybills.map((segmentWaybill) => {
+        const mode = (segmentWaybill.mode ?? 'ROAD') as SegmentMode;
+        return {
+          id: Number(segmentWaybill.id),
+          waybillNo: segmentWaybill.waybill_no,
+          mode,
+          modeLabel: mode === 'ROAD' ? '公路' : mode === 'SEA' ? '海运' : '铁路',
+          carrierName: segmentByMode.get(mode)?.carrier_name ?? '',
+          status: segmentWaybill.status,
+          statusLabel: WAYBILL_STATUS_LABELS[segmentWaybill.status],
+        };
+      }),
+      documents: issued.documents.map((doc) => documentDto(doc)),
     };
   });
 }

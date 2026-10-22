@@ -181,8 +181,8 @@ async function main() {
     await page.waitForURL(/\/orders\/\d+$/, { timeout: 20000 });
     await page.getByText('已调度', { exact: false }).first().waitFor({ timeout: 15000 });
     await page.locator('[data-testid="track-entry"]').click();
-    await page.waitForURL(/\/waybills\/\d+$/, { timeout: 15000 });
-    const waybillId = Number(/\/waybills\/(\d+)$/.exec(page.url())[1]);
+    await page.waitForURL(/\/waybills\/\d+\/track$/, { timeout: 15000 });
+    const waybillId = Number(/\/waybills\/(\d+)\/track$/.exec(page.url())[1]);
     await page.locator('[data-testid="track-chart"]').waitFor({ state: 'visible' });
     console.log(`  ✓ 调度完成，运单 id=${waybillId}（已生成 3 段）`);
     await screenshot('08-MTO-调度后运单跟踪');
@@ -230,7 +230,7 @@ async function main() {
     // ── 11. 货主轨迹与签收 ──
     step('货主查看轨迹并签收');
     await loginAs('SHIPPER', '货主 shipper01');
-    await page.goto(`${BASE}/waybills/${waybillId}`);
+    await page.goto(`${BASE}/waybills/${waybillId}/track`);
     await page.locator('[data-testid="track-chart"] canvas').waitFor({ state: 'visible', timeout: 20000 });
     const signBtn = page.locator('[data-testid="sign-btn"]');
     await signBtn.waitFor({ state: 'visible', timeout: 20000 });

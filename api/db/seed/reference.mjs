@@ -33,6 +33,11 @@ const MENU_PERMS = [
   ['menu:bills', '账单', 'settlement'],
   ['menu:integration', '集成中心', 'integration'],
   ['menu:audit', '审计日志', 'audit'],
+  ['menu:waybills', '运单中心', 'waybill'],
+  ['menu:containers', '箱管中心', 'container'],
+  ['menu:documents', '单证中心', 'document'],
+  ['menu:rail', '铁路工作台', 'rail'],
+  ['menu:sea', '水路工作台', 'sea'],
 ];
 
 const BUTTON_PERMS = [
@@ -41,22 +46,27 @@ const BUTTON_PERMS = [
   ['contract:create', '创建合同'], ['contract:send', '发送合同'], ['contract:sign', '签署合同'],
   ['price:create', '维护价格规则'], ['customer:create', '维护客户'], ['partner:create', '维护伙伴'],
   ['integration:retry', '重试集成报文'], ['segment:status', '推进运输节点'], ['waybill:sign', '运单签收'], ['bill:settle', '生成账单'],
+  ['waybill:notarize', '运单存证'], ['document:upload', '上传单证'], ['document:sign', '单证签章'], ['document:ocr', '单证 OCR'],
+  ['container:release', '放箱'], ['container:movement', '箱动态登记'], ['container:return', '还箱'], ['rail:apply', '铁路需求车提报'], ['sea:book', '水路订舱'],
 ];
 
 const ROLE_PERMISSIONS = {
-  SHIPPER: ['menu:dashboard', 'menu:orders', 'menu:quotes', 'menu:contracts', 'menu:track', 'menu:bills',
-    'order:create', 'order:cancel', 'quote:create', 'quote:accept', 'contract:sign', 'waybill:sign'],
-  FORWARDER: ['menu:dashboard', 'menu:orders', 'menu:quotes', 'menu:contracts', 'menu:customers', 'menu:track',
-    'order:create', 'order:cancel', 'quote:create', 'quote:send', 'quote:accept', 'contract:create', 'contract:send', 'contract:sign', 'customer:create'],
+  SHIPPER: ['menu:dashboard', 'menu:orders', 'menu:quotes', 'menu:contracts', 'menu:track', 'menu:bills', 'menu:waybills', 'menu:documents',
+    'order:create', 'order:cancel', 'quote:create', 'quote:accept', 'contract:sign', 'waybill:sign', 'document:upload', 'document:sign'],
+  FORWARDER: ['menu:dashboard', 'menu:orders', 'menu:quotes', 'menu:contracts', 'menu:customers', 'menu:track', 'menu:waybills', 'menu:documents',
+    'order:create', 'order:cancel', 'quote:create', 'quote:send', 'quote:accept', 'contract:create', 'contract:send', 'contract:sign', 'customer:create', 'document:upload'],
   MTO: ['menu:dashboard', 'menu:orders', 'menu:quotes', 'menu:contracts', 'menu:customers', 'menu:partners', 'menu:master',
     'menu:dispatch', 'menu:track', 'menu:settlement', 'menu:bills', 'menu:integration', 'menu:audit',
+    'menu:waybills', 'menu:containers', 'menu:documents',
     'order:create', 'order:cancel', 'order:dispatch', 'quote:create', 'quote:send', 'quote:accept',
-    'contract:create', 'contract:send', 'price:create', 'customer:create', 'partner:create', 'integration:retry'],
-  CARRIER: ['menu:dashboard', 'menu:orders', 'menu:tasks', 'menu:track', 'segment:status'],
-  RAIL_CARRIER: ['menu:dashboard', 'menu:orders', 'menu:track'],
-  SEA_CARRIER: ['menu:dashboard', 'menu:orders', 'menu:track'],
-  TERMINAL: ['menu:dashboard', 'menu:terminal', 'menu:track', 'segment:status'],
-  SETTLEMENT: ['menu:dashboard', 'menu:settlement', 'menu:bills', 'menu:orders', 'bill:settle'],
+    'contract:create', 'contract:send', 'price:create', 'customer:create', 'partner:create', 'integration:retry',
+    'waybill:notarize', 'document:upload', 'document:sign', 'document:ocr',
+    'container:release', 'container:movement', 'container:return'],
+  CARRIER: ['menu:dashboard', 'menu:orders', 'menu:tasks', 'menu:track', 'menu:waybills', 'menu:containers', 'segment:status', 'container:movement'],
+  RAIL_CARRIER: ['menu:dashboard', 'menu:orders', 'menu:track', 'menu:waybills', 'menu:rail', 'rail:apply'],
+  SEA_CARRIER: ['menu:dashboard', 'menu:orders', 'menu:track', 'menu:waybills', 'menu:sea', 'sea:book'],
+  TERMINAL: ['menu:dashboard', 'menu:terminal', 'menu:track', 'menu:waybills', 'menu:containers', 'segment:status', 'container:movement', 'container:return', 'document:upload'],
+  SETTLEMENT: ['menu:dashboard', 'menu:settlement', 'menu:bills', 'menu:orders', 'menu:waybills', 'menu:documents', 'bill:settle'],
   ADMIN: [...MENU_PERMS.map(([code]) => code), ...BUTTON_PERMS.map(([code]) => code)],
 };
 
