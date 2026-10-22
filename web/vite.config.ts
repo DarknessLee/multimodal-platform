@@ -4,7 +4,7 @@ import vue from '@vitejs/plugin-vue';
 export default defineConfig({
   plugins: [vue()],
   server: {
-    host: '127.0.0.1',
+    host: '0.0.0.0',
     port: 5173,
     // 忽略编辑器/工具的原子写临时目录，避免 Windows 下 watcher 因 EBUSY 崩溃
     watch: {
