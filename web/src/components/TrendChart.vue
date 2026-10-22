@@ -26,7 +26,7 @@ function buildOption(): echarts.EChartsOption {
   const revenue = trend?.revenue ?? [];
   return {
     color: ['#409eff', '#67c23a'],
-    grid: { left: 52, right: 66, top: 34, bottom: 44 },
+    grid: { left: 52, right: 66, top: 52, bottom: 44 },
     tooltip: {
       trigger: 'axis',
       confine: true,
