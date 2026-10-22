@@ -5,7 +5,7 @@
         <div class="brand-logo">联</div>
         <div class="brand-text">
           <div class="brand-name">多式联运平台</div>
-          <div class="brand-version">Stage 4 · 财务结算与分析</div>
+          <div class="brand-version">Stage 5 · 集成/监管/运营与验收</div>
         </div>
       </div>
 
@@ -149,6 +149,10 @@ const activeMenu = computed<string>(() => {
   if (path.startsWith('/finance/factoring')) return '/finance/factoring';
   if (path.startsWith('/finance/analytics')) return '/finance/analytics';
   if (path.startsWith('/insurance')) return '/insurance';
+  if (path.startsWith('/regulator/reports') || path.startsWith('/regulator/compliance')) return '/regulator';
+  if (path.startsWith('/regulator')) return '/regulator';
+  if (path.startsWith('/ops')) return '/ops';
+  if (path.startsWith('/acceptance')) return '/acceptance';
   if (path.startsWith('/quotes')) return '/quotes';
   if (path.startsWith('/contracts')) return '/contracts';
   if (path.startsWith('/master/customers')) return '/master/customers';

@@ -16,6 +16,7 @@ const ROLE_DEFS = [
   { code: 'SETTLEMENT', name: '结算', desc: '账单生成、对账、结算' },
   { code: 'FINANCE', name: '金融机构', desc: '银行/保理：支付回执、保理审批' },
   { code: 'INSURANCE', name: '保险机构', desc: '货运险保单与理赔' },
+  { code: 'REGULATOR', name: '监管机构', desc: '监管报送、合规检查与回执' },
   { code: 'ADMIN', name: '平台运营', desc: '主数据、集成、审计与平台配置' },
 ];
 
@@ -49,6 +50,9 @@ const MENU_PERMS = [
   ['menu:factoring', '保理工作台', 'finance'],
   ['menu:insurance', '保险保单', 'insurance'],
   ['menu:analytics', '经营分析', 'analytics'],
+  ['menu:regulator', '监管中心', 'regulator'],
+  ['menu:ops', '运营后台', 'ops'],
+  ['menu:acceptance', '全链路验收', 'acceptance'],
 ];
 
 const BUTTON_PERMS = [
@@ -65,6 +69,9 @@ const BUTTON_PERMS = [
   ['payment:record', '登记收付款'], ['payment:confirm', '支付回执确认'],
   ['recon:create', '创建对账单'], ['recon:send', '发送对账单'], ['recon:confirm', '确认对账单'], ['recon:dispute', '对账差异'],
   ['factoring:apply', '保理申请'], ['factoring:approve', '保理审批'], ['insurance:create', '投保'], ['analytics:read', '经营分析查看'],
+  ['integration:adapter-test', '适配器连通测试'], ['integration:retry-batch', '批量重试报文'],
+  ['regulator:report-create', '生成监管报送'], ['regulator:report-submit', '提交监管报送'], ['regulator:report-accept', '监管受理回执'], ['regulator:check-run', '执行合规检查'],
+  ['ops:config-update', '更新系统配置'], ['ops:dict-manage', '维护数据字典'], ['ops:job-run', '执行定时任务'], ['ops:full-chain-check', '全链路验收检查'],
 ];
 
 const ROLE_PERMISSIONS = {
@@ -76,13 +83,15 @@ const ROLE_PERMISSIONS = {
     'menu:dispatch', 'menu:track', 'menu:settlement', 'menu:bills', 'menu:integration', 'menu:audit',
     'menu:waybills', 'menu:containers', 'menu:documents', 'menu:monitor', 'menu:alerts', 'menu:capacity',
     'menu:reconciliation', 'menu:invoice', 'menu:payment', 'menu:analytics',
+    'menu:regulator', 'menu:acceptance',
     'order:create', 'order:cancel', 'order:dispatch', 'quote:create', 'quote:send', 'quote:accept',
     'contract:create', 'contract:send', 'price:create', 'customer:create', 'partner:create', 'integration:retry',
     'waybill:notarize', 'document:upload', 'document:sign', 'document:ocr',
     'container:release', 'container:movement', 'container:return',
     'dispatch:generate', 'dispatch:confirm', 'alert:ack', 'alert:close', 'exception:handle', 'iot:ingest',
     'bill:issue-invoice', 'invoice:issue', 'invoice:void', 'payment:record', 'payment:confirm',
-    'recon:create', 'recon:send', 'recon:confirm', 'recon:dispute', 'analytics:read'],
+    'recon:create', 'recon:send', 'recon:confirm', 'recon:dispute', 'analytics:read',
+    'regulator:check-run', 'ops:full-chain-check'],
   CARRIER: ['menu:dashboard', 'menu:orders', 'menu:tasks', 'menu:track', 'menu:waybills', 'menu:containers', 'menu:monitor', 'menu:alerts', 'segment:status', 'container:movement'],
   RAIL_CARRIER: ['menu:dashboard', 'menu:orders', 'menu:track', 'menu:waybills', 'menu:rail', 'menu:monitor', 'rail:apply'],
   SEA_CARRIER: ['menu:dashboard', 'menu:orders', 'menu:track', 'menu:waybills', 'menu:sea', 'menu:monitor', 'sea:book'],
@@ -96,6 +105,8 @@ const ROLE_PERMISSIONS = {
     'payment:record', 'payment:confirm', 'recon:confirm', 'recon:dispute',
     'factoring:apply', 'factoring:approve', 'analytics:read'],
   INSURANCE: ['menu:dashboard', 'menu:orders', 'menu:waybills', 'menu:insurance', 'insurance:create'],
+  REGULATOR: ['menu:dashboard', 'menu:regulator', 'menu:orders', 'menu:waybills', 'menu:monitor',
+    'regulator:report-create', 'regulator:report-submit', 'regulator:report-accept', 'regulator:check-run'],
   ADMIN: [...MENU_PERMS.map(([code]) => code), ...BUTTON_PERMS.map(([code]) => code)],
 };
 
@@ -423,6 +434,7 @@ export async function seedReference(conn) {
     ['admin01', '平台运营管理员', 'ADMIN', null, null, '13900000032'],
     ['finance01', '中国银行（金融机构）', 'FINANCE', null, partnerBy('FINANCE', '中国银行').id, '13900000033'],
     ['insurance01', '人保财险（保险机构）', 'INSURANCE', null, partnerBy('INSURANCE', '人保财险').id, '13900000034'],
+    ['regulator01', '上海市交通委员会（监管）', 'REGULATOR', null, partnerBy('REGULATOR', '上海交通委').id, '13900000035'],
   ];
   for (const [username, displayName, role, customerId, partnerId, phone] of userDefs) {
     const id = await insert(conn,

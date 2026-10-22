@@ -12,6 +12,7 @@ export type Role =
   | 'SETTLEMENT'
   | 'FINANCE'
   | 'INSURANCE'
+  | 'REGULATOR'
   | 'ADMIN';
 
 export type OrderStatus =
@@ -565,6 +566,99 @@ export interface StatDailyRow {
   created_at: string;
 }
 
+// ── Stage 5：集成中心 v2 / 监管 / 运营后台 / 全链路验收 ──────────────────────
+export type AdapterSystemType = 'RAIL_95306' | 'PORT_EDI' | 'TAX' | 'BANK' | 'CA' | 'INSURANCE';
+export type AdapterStatus = 'ONLINE' | 'DEGRADED' | 'OFFLINE';
+export type ReportType = 'OPERATION_MONTHLY' | 'SAFETY' | 'COMPLAINT' | 'STATISTICS';
+export type ReportStatus = 'DRAFT' | 'SUBMITTED' | 'ACCEPTED' | 'RETURNED';
+export type ComplianceCheckType =
+  | 'CONTAINER_NO'
+  | 'WAYBILL_COMPLETE'
+  | 'INVOICE_MATCH'
+  | 'FINANCE_BALANCE'
+  | 'MESSAGE_QUALITY';
+export type ComplianceResult = 'PASS' | 'WARN' | 'FAIL';
+export type OpsDictStatus = 'ACTIVE' | 'DISABLED';
+export type JobStatus = 'SUCCESS' | 'FAILED' | 'RUNNING';
+
+export interface IntegrationAdapterRow {
+  id: number;
+  adapter_code: string;
+  name: string;
+  system_type: AdapterSystemType;
+  protocol: string;
+  endpoint: string;
+  status: AdapterStatus;
+  success_rate: number;
+  total_messages: number;
+  failed_messages: number;
+  last_sync_at: string | null;
+  retry_policy: string | null;
+  created_at: string;
+}
+
+export interface RegulatorReportRow {
+  id: number;
+  report_no: string;
+  report_type: ReportType;
+  period: string;
+  regulator_name: string;
+  content: unknown;
+  status: ReportStatus;
+  submitted_at: string | null;
+  accepted_at: string | null;
+  remark: string | null;
+  created_by: number | null;
+  created_at: string;
+}
+
+export interface ComplianceCheckRow {
+  id: number;
+  check_no: string;
+  check_type: ComplianceCheckType;
+  target_type: string;
+  target_id: string;
+  result: ComplianceResult;
+  detail: string;
+  checked_at: string;
+  created_at: string;
+}
+
+export interface OpsConfigRow {
+  id: number;
+  config_key: string;
+  config_value: string;
+  category: string;
+  description: string | null;
+  editable: number;
+  updated_by: number | null;
+  updated_at: string;
+}
+
+export interface OpsDictRow {
+  id: number;
+  dict_type: string;
+  dict_key: string;
+  dict_value: string;
+  sort: number;
+  status: OpsDictStatus;
+  remark: string | null;
+  created_at: string;
+}
+
+export interface JobLogRow {
+  id: number;
+  job_code: string;
+  job_name: string;
+  cron: string | null;
+  status: JobStatus;
+  started_at: string;
+  finished_at: string | null;
+  duration_ms: number;
+  result: string | null;
+  created_at: string;
+}
+
 /** 账单明细中的一段（segment_breakdown JSON 元素） */
 export interface BillBreakdownItem {
   segmentId: number;
@@ -791,6 +885,7 @@ export interface OrderCargoRow {
 export interface IntegrationMessageRow {
   id: number;
   msg_no: string;
+  adapter_id: number | null;
   system_code: string;
   system_name: string;
   direction: IntegrationDirection;
@@ -801,8 +896,10 @@ export interface IntegrationMessageRow {
   payload: unknown;
   status: IntegrationStatus;
   retry_count: number;
+  next_retry_at: string | null;
   response_payload: unknown;
   error_message: string | null;
+  error_code: string | null;
   created_at: string;
   processed_at: string | null;
 }

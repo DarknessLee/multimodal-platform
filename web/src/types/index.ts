@@ -12,6 +12,7 @@ export type Role =
   | 'SETTLEMENT'
   | 'FINANCE'
   | 'INSURANCE'
+  | 'REGULATOR'
   | 'ADMIN';
 
 export type OrderStatus =
@@ -707,6 +708,7 @@ export interface IntegrationMessage {
   statusLabel?: string;
   retryCount: number;
   errorMessage: string | null;
+  errorCode?: string | null;
   createdAt: string;
   processedAt?: string | null;
   payloadPreview?: string | null;
@@ -1606,4 +1608,212 @@ export interface AnalyticsByMode {
   revenue: number;
   cost: number;
   profit: number;
+}
+
+// ───────────────────────────── Stage 5：集成中心 v2 / 监管 / 运营 / 全链路验收 ─────────────────────────────
+
+export interface IntegrationAdapter {
+  id: number;
+  adapterCode: string;
+  name: string;
+  systemType: string;
+  systemTypeLabel: string;
+  protocol: string;
+  endpoint: string;
+  status: string;
+  statusLabel: string;
+  successRate: number;
+  totalMessages: number;
+  failedMessages: number;
+  lastSyncAt: string | null;
+  retryPolicy: string | null;
+}
+
+export interface AdapterHealthCheckItem {
+  name: string;
+  status: string;
+  detail: string;
+  latencyMs: number;
+}
+
+export interface AdapterHealthResult {
+  adapter: IntegrationAdapter;
+  status: string;
+  checks: AdapterHealthCheckItem[];
+  checkedAt: string;
+}
+
+export interface AdapterTestResult {
+  adapterId: number;
+  success: boolean;
+  latencyMs: number;
+  message: string;
+  testedAt: string;
+}
+
+export interface IntegrationMessageDetail {
+  id: number;
+  msgNo: string;
+  systemCode?: string;
+  systemName?: string;
+  systemType?: string;
+  systemTypeLabel?: string;
+  msgType: string;
+  direction: string;
+  relatedType: string | null;
+  relatedId: string | null;
+  status: string;
+  statusLabel?: string;
+  retryCount: number;
+  errorCode: string | null;
+  errorMessage?: string | null;
+  requestBody: string | Record<string, unknown> | null;
+  responseBody: string | Record<string, unknown> | null;
+  sentAt: string | null;
+  lastRetryAt: string | null;
+  createdAt?: string;
+}
+
+export interface RetryBatchResult {
+  retried: number;
+  success: number;
+  failed: number;
+  results: Array<{ id: number; msgNo: string; status: string; errorMessage: string | null }>;
+}
+
+export interface IntegrationStats {
+  total: number;
+  success: number;
+  failed: number;
+  successRate: number;
+  bySystem: Array<{ systemType: string; count: number; failed: number; successRate: number }>;
+  trend: Array<{ date: string; count: number; failed: number }>;
+  recentFailures: Array<{ id: number; msgNo: string; msgType: string; errorCode: string | null }>;
+}
+
+export interface RegulatorReport {
+  id: number;
+  reportNo: string;
+  reportType: string;
+  reportTypeLabel: string;
+  period: string;
+  regulatorName: string;
+  status: string;
+  statusLabel: string;
+  submittedAt: string | null;
+  acceptedAt: string | null;
+  createdAt: string;
+  remark?: string | null;
+}
+
+export interface RegulatorReportDetail {
+  report: RegulatorReport;
+  content: Record<string, unknown> | null;
+}
+
+export interface ComplianceCheckItem {
+  id: number;
+  checkNo: string;
+  checkType: string;
+  checkTypeLabel: string;
+  targetType: string;
+  targetId: string;
+  result: string;
+  resultLabel: string;
+  detail: string;
+  checkedAt: string;
+}
+
+export interface ComplianceRunResult {
+  checks: ComplianceCheckItem[];
+  summary: { pass: number; warn: number; fail: number; total: number };
+}
+
+export interface RegulatorDashboard {
+  reports: { total: number; draft: number; submitted: number; accepted: number; returned: number };
+  compliance: { pass: number; warn: number; fail: number };
+  latestReports: RegulatorReport[];
+  latestChecks: ComplianceCheckItem[];
+}
+
+export interface OpsConfigItem {
+  id: number;
+  configKey: string;
+  configValue: string;
+  category: string;
+  description: string | null;
+  editable: boolean;
+  updatedBy: string | number | null;
+  updatedAt: string;
+}
+
+export interface OpsDictItem {
+  id: number;
+  dictType: string;
+  dictKey: string;
+  dictValue: string;
+  sort: number;
+  status: string;
+  remark: string | null;
+}
+
+export interface OpsJobItem {
+  jobCode: string;
+  jobName: string;
+  cron: string | null;
+  status: string;
+  lastRunAt: string | null;
+  lastResult: string | null;
+  lastDurationMs: number | null;
+}
+
+export interface OpsHealth {
+  status: string;
+  db: { status: string; latencyMs: number };
+  adapters: { online: number; total: number };
+  jobs: { success: number; failed: number };
+  data: {
+    tables?: number;
+    orders?: number;
+    waybills?: number;
+    documents?: number;
+    bills?: number;
+    invoices?: number;
+    alerts?: number;
+    [key: string]: number | undefined;
+  };
+}
+
+export interface OpsDashboard {
+  health: OpsHealth;
+  recentJobs: Array<OpsJobItem & { id?: number; durationMs?: number; startedAt?: string }>;
+  failedMessages: Array<{
+    id: number;
+    msgNo: string;
+    msgType: string;
+    errorCode: string | null;
+    errorMessage?: string | null;
+  }>;
+  pendingReports: number;
+  dataCounts: Record<string, number>;
+  uptimeHours: number;
+}
+
+export interface FullChainCheckItem {
+  name: string;
+  status: string;
+  detail: string;
+}
+
+export interface FullChainCheckStage {
+  stage: number;
+  name: string;
+  checks: FullChainCheckItem[];
+}
+
+export interface FullChainCheckResult {
+  checkedAt: string;
+  passed: boolean;
+  stages: FullChainCheckStage[];
+  summary: { total: number; pass: number; warn: number; fail: number };
 }

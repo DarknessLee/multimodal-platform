@@ -94,6 +94,14 @@ export const DEMO_ACCOUNTS: DemoAccount[] = [
     duty: '货运险投保与保单管理',
   },
   {
+    username: 'regulator01',
+    password: 'demo123',
+    role: 'REGULATOR',
+    roleLabel: '监管机构',
+    displayName: '上海市交通委员会（监管）',
+    duty: '监管报送、受理回执与合规检查',
+  },
+  {
     username: 'admin01',
     password: 'demo123',
     role: 'ADMIN',
@@ -115,6 +123,7 @@ export const ROLE_LABELS: Record<string, string> = {
   SETTLEMENT: '结算',
   FINANCE: '金融机构',
   INSURANCE: '保险机构',
+  REGULATOR: '监管机构',
   ADMIN: '平台运营',
 };
 
@@ -149,6 +158,9 @@ const MENU_CODES = [
   'menu:factoring',
   'menu:insurance',
   'menu:analytics',
+  'menu:regulator',
+  'menu:ops',
+  'menu:acceptance',
 ];
 
 const BUTTON_CODES = [
@@ -196,6 +208,16 @@ const BUTTON_CODES = [
   'factoring:approve',
   'insurance:create',
   'analytics:read',
+  'integration:adapter-test',
+  'integration:retry-batch',
+  'regulator:report-create',
+  'regulator:report-submit',
+  'regulator:report-accept',
+  'regulator:check-run',
+  'ops:config-update',
+  'ops:dict-manage',
+  'ops:job-run',
+  'ops:full-chain-check',
 ];
 
 export const ROLE_FALLBACK_PERMISSIONS: Record<string, string[]> = {
@@ -296,6 +318,10 @@ export const ROLE_FALLBACK_PERMISSIONS: Record<string, string[]> = {
     'recon:confirm',
     'recon:dispute',
     'analytics:read',
+    'menu:regulator',
+    'menu:acceptance',
+    'regulator:check-run',
+    'ops:full-chain-check',
   ],
   CARRIER: [
     'menu:dashboard',
@@ -390,6 +416,17 @@ export const ROLE_FALLBACK_PERMISSIONS: Record<string, string[]> = {
     'menu:insurance',
     'insurance:create',
   ],
+  REGULATOR: [
+    'menu:dashboard',
+    'menu:regulator',
+    'menu:orders',
+    'menu:waybills',
+    'menu:monitor',
+    'regulator:report-create',
+    'regulator:report-submit',
+    'regulator:report-accept',
+    'regulator:check-run',
+  ],
   ADMIN: [...MENU_CODES, ...BUTTON_CODES],
 };
 
@@ -432,6 +469,9 @@ export const MENU_DEFS: MenuDef[] = [
   { code: 'menu:analytics', label: '经营分析', path: '/finance/analytics', testid: 'nav-analytics', group: '财务结算' },
   { code: 'menu:insurance', label: '保险保单', path: '/insurance', testid: 'nav-insurance', group: '财务结算' },
   { code: 'menu:integration', label: '集成中心', path: '/integration/messages', testid: 'nav-integration', group: '平台治理' },
+  { code: 'menu:regulator', label: '监管中心', path: '/regulator', testid: 'nav-regulator', group: '平台治理' },
+  { code: 'menu:ops', label: '运营后台', path: '/ops', testid: 'nav-ops', group: '平台治理' },
+  { code: 'menu:acceptance', label: '全链路验收', path: '/acceptance', testid: 'nav-acceptance', group: '平台治理' },
   { code: 'menu:audit', label: '审计日志', path: '/audit/logs', testid: 'nav-audit', group: '平台治理' },
 ];
 
@@ -1325,5 +1365,154 @@ export function billStatusTagType(status?: string | null): 'info' | 'primary' | 
   if (status === 'PAID') return 'success';
   if (status === 'ISSUED') return 'primary';
   if (status === 'VOID') return 'danger';
+  return 'info';
+}
+
+// ───────────────────────────── Stage 5：集成 / 监管 / 运营 / 验收 ─────────────────────────────
+
+export const ADAPTER_STATUS_LABELS: Record<string, string> = {
+  ONLINE: '在线',
+  DEGRADED: '降级',
+  OFFLINE: '离线',
+};
+
+export const ADAPTER_SYSTEM_LABELS: Record<string, string> = {
+  RAIL_95306: '铁路 95306',
+  PORT_EDI: '港口 EDI',
+  TAX: '税务',
+  BANK: '银行',
+  CA: 'CA 签章',
+  INSURANCE: '保险',
+  REGULATOR: '监管',
+};
+
+export const REPORT_TYPE_LABELS: Record<string, string> = {
+  OPERATION_MONTHLY: '运营月报',
+  SAFETY: '安全报送',
+  COMPLAINT: '投诉报送',
+  STATISTICS: '统计报送',
+};
+
+export const REPORT_TYPE_OPTIONS = Object.entries(REPORT_TYPE_LABELS).map(([value, label]) => ({
+  value,
+  label,
+}));
+
+export const REPORT_STATUS_LABELS: Record<string, string> = {
+  DRAFT: '草稿',
+  SUBMITTED: '已提交',
+  ACCEPTED: '已受理',
+  RETURNED: '已退回',
+};
+
+export const REPORT_STATUS_OPTIONS = Object.entries(REPORT_STATUS_LABELS).map(([value, label]) => ({
+  value,
+  label,
+}));
+
+export const COMPLIANCE_RESULT_LABELS: Record<string, string> = {
+  PASS: '通过',
+  WARN: '警告',
+  FAIL: '失败',
+};
+
+export const COMPLIANCE_RESULT_OPTIONS = Object.entries(COMPLIANCE_RESULT_LABELS).map(([value, label]) => ({
+  value,
+  label,
+}));
+
+export const COMPLIANCE_TYPE_LABELS: Record<string, string> = {
+  CONTAINER_NO: '箱号校验位',
+  WAYBILL_COMPLETE: '单证完整性',
+  INVOICE_MATCH: '发票一致性',
+  FINANCE_BALANCE: '财务平衡',
+  MESSAGE_QUALITY: '报文质量',
+};
+
+export const COMPLIANCE_TYPE_OPTIONS = Object.entries(COMPLIANCE_TYPE_LABELS).map(([value, label]) => ({
+  value,
+  label,
+}));
+
+export const JOB_STATUS_LABELS: Record<string, string> = {
+  SUCCESS: '成功',
+  FAILED: '失败',
+  RUNNING: '执行中',
+};
+
+export const OPS_CONFIG_CATEGORY_LABELS: Record<string, string> = {
+  GENERAL: '通用',
+  INTEGRATION: '集成',
+  NOTIFICATION: '通知',
+  SECURITY: '安全',
+  FINANCE: '财务',
+  ALERT: '告警',
+  OPS: '运营',
+};
+
+export function adapterStatusLabel(status?: string | null): string {
+  if (!status) return '—';
+  return ADAPTER_STATUS_LABELS[status] ?? status;
+}
+
+export function adapterSystemLabel(systemType?: string | null): string {
+  if (!systemType) return '—';
+  return ADAPTER_SYSTEM_LABELS[systemType] ?? systemType;
+}
+
+export function reportTypeLabel(type?: string | null): string {
+  if (!type) return '—';
+  return REPORT_TYPE_LABELS[type] ?? type;
+}
+
+export function reportStatusLabel(status?: string | null): string {
+  if (!status) return '—';
+  return REPORT_STATUS_LABELS[status] ?? status;
+}
+
+export function complianceResultLabel(result?: string | null): string {
+  if (!result) return '—';
+  return COMPLIANCE_RESULT_LABELS[result] ?? result;
+}
+
+export function complianceTypeLabel(type?: string | null): string {
+  if (!type) return '—';
+  return COMPLIANCE_TYPE_LABELS[type] ?? type;
+}
+
+export function jobStatusLabel(status?: string | null): string {
+  if (!status) return '—';
+  return JOB_STATUS_LABELS[status] ?? status;
+}
+
+export function adapterStatusTagType(status?: string | null): 'success' | 'warning' | 'danger' {
+  if (status === 'ONLINE') return 'success';
+  if (status === 'DEGRADED') return 'warning';
+  return 'danger';
+}
+
+export function reportStatusTagType(status?: string | null): 'info' | 'primary' | 'success' | 'warning' | 'danger' {
+  if (status === 'ACCEPTED') return 'success';
+  if (status === 'SUBMITTED') return 'primary';
+  if (status === 'RETURNED') return 'danger';
+  return 'info';
+}
+
+export function complianceResultTagType(result?: string | null): 'success' | 'warning' | 'danger' {
+  if (result === 'PASS') return 'success';
+  if (result === 'WARN') return 'warning';
+  return 'danger';
+}
+
+export function jobStatusTagType(status?: string | null): 'success' | 'warning' | 'danger' {
+  if (status === 'SUCCESS') return 'success';
+  if (status === 'RUNNING') return 'warning';
+  return 'danger';
+}
+
+export function checkItemTagType(status?: string | null): 'success' | 'warning' | 'danger' | 'info' {
+  if (status === 'PASS') return 'success';
+  if (status === 'WARN') return 'warning';
+  if (status === 'FAIL') return 'danger';
   return 'info';
 }

@@ -34,10 +34,12 @@ import {
 import { monitorRouter } from './modules/monitor/router';
 import { notificationsRouter } from './modules/notification/router';
 import { notarizeRouter } from './modules/notarize/router';
+import { opsRouter } from './modules/ops/router';
 import { paymentsRouter } from './modules/payment/router';
 import { quotesRouter } from './modules/quote/router';
 import { railRouter } from './modules/rail/router';
 import { reconciliationsRouter } from './modules/reconciliation/router';
+import { regulatorRouter } from './modules/regulator/router';
 import { seaRouter } from './modules/sea/router';
 
 /** 组装 Express 应用：统一 /api 前缀 + JSON 响应 + 全局错误处理 */
@@ -50,7 +52,7 @@ export function createApp() {
 
   // 根路径仅作健康文本，不属于业务接口
   app.get('/', (_req, res) => {
-    res.type('text/plain; charset=utf-8').send('多式联运平台 API 运行中（Stage 3 /api）');
+    res.type('text/plain; charset=utf-8').send('多式联运平台 API 运行中（Stage 5 /api）');
   });
 
   // v0 接口（保持兼容）
@@ -101,6 +103,10 @@ export function createApp() {
   app.use('/api/insurance', requireAuth, insuranceRouter);
   app.use('/api/analytics', requireAuth, analyticsRouter);
   app.use('/api/finance', requireAuth, financeRouter);
+
+  // Stage 5 模块：集成中心 v2 已挂 /api/integration；监管 / 运营 / 全链路验收
+  app.use('/api/regulator', requireAuth, regulatorRouter);
+  app.use('/api/ops', requireAuth, opsRouter);
 
   app.use(notFoundHandler);
   app.use(errorHandler);

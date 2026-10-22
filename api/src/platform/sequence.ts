@@ -18,7 +18,9 @@ export type DocTable =
   | 'payment'
   | 'reconciliation'
   | 'factoring_application'
-  | 'insurance_policy';
+  | 'insurance_policy'
+  | 'regulator_report'
+  | 'compliance_check';
 
 export type DocColumn =
   | 'order_no'
@@ -36,7 +38,9 @@ export type DocColumn =
   | 'payment_no'
   | 'recon_no'
   | 'app_no'
-  | 'policy_no';
+  | 'policy_no'
+  | 'report_no'
+  | 'check_no';
 
 export interface DocNoOptions {
   table: DocTable;

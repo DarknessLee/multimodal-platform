@@ -1,9 +1,15 @@
--- 多式联运演示版 v1 — Stage 4 schema（53 张表 = Stage3 44 + 9 张结算/财务表 + bill 扩展，utf8mb4 / InnoDB）
+-- 多式联运演示版 v1 — Stage 5 schema（59 张表 = Stage4 53 + 6 张集成/监管/运营表 + message 扩展，utf8mb4 / InnoDB）
 -- 由 api/db/init.mjs 执行：先 DROP 全部表再建表，保证演示数据可重置。
 -- 约定：JSON 输出 camelCase；表名 orders 避开 MySQL 保留字 order；v0 字段只增不改。
 
 SET NAMES utf8mb4;
 
+DROP TABLE IF EXISTS job_log;
+DROP TABLE IF EXISTS ops_dict;
+DROP TABLE IF EXISTS ops_config;
+DROP TABLE IF EXISTS compliance_check;
+DROP TABLE IF EXISTS regulator_report;
+DROP TABLE IF EXISTS integration_adapter;
 DROP TABLE IF EXISTS payment_allocation;
 DROP TABLE IF EXISTS payment;
 DROP TABLE IF EXISTS invoice;
@@ -1190,4 +1196,110 @@ CREATE TABLE stat_daily (
   UNIQUE KEY uk_stat_day (stat_date, customer_id, mode),
   KEY idx_stat_date (stat_date),
   CONSTRAINT fk_stat_customer FOREIGN KEY (customer_id) REFERENCES customer (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- Stage 5：集成中心 v2 / 监管 / 运营后台 / 全链路验收
+-- ═══════════════════════════════════════════════════════════════════════════
+
+ALTER TABLE user
+  MODIFY COLUMN role ENUM('SHIPPER','FORWARDER','MTO','CARRIER','RAIL_CARRIER','SEA_CARRIER','TERMINAL','SETTLEMENT','ADMIN','FINANCE','INSURANCE','REGULATOR') NOT NULL;
+
+ALTER TABLE integration_message
+  ADD COLUMN adapter_id BIGINT NULL AFTER msg_no,
+  ADD COLUMN next_retry_at DATETIME NULL AFTER retry_count,
+  ADD COLUMN error_code VARCHAR(30) NULL AFTER error_message,
+  ADD KEY idx_message_adapter (adapter_id);
+
+CREATE TABLE integration_adapter (
+  id              BIGINT       NOT NULL AUTO_INCREMENT,
+  adapter_code    VARCHAR(30)  NOT NULL,
+  name            VARCHAR(80)  NOT NULL,
+  system_type     ENUM('RAIL_95306','PORT_EDI','TAX','BANK','CA','INSURANCE') NOT NULL,
+  protocol        VARCHAR(30)  NOT NULL DEFAULT 'HTTPS',
+  endpoint        VARCHAR(200) NOT NULL,
+  status          ENUM('ONLINE','DEGRADED','OFFLINE') NOT NULL DEFAULT 'ONLINE',
+  success_rate    DECIMAL(5,2) NOT NULL DEFAULT 100.00,
+  total_messages  INT          NOT NULL DEFAULT 0,
+  failed_messages INT          NOT NULL DEFAULT 0,
+  last_sync_at    DATETIME     NULL,
+  retry_policy    VARCHAR(100) NULL,
+  created_at      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_adapter_code (adapter_code)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE regulator_report (
+  id              BIGINT       NOT NULL AUTO_INCREMENT,
+  report_no       VARCHAR(24)  NOT NULL,
+  report_type     ENUM('OPERATION_MONTHLY','SAFETY','COMPLAINT','STATISTICS') NOT NULL,
+  period          CHAR(7)      NOT NULL,
+  regulator_name  VARCHAR(100) NOT NULL,
+  content         JSON         NOT NULL,
+  status          ENUM('DRAFT','SUBMITTED','ACCEPTED','RETURNED') NOT NULL DEFAULT 'DRAFT',
+  submitted_at    DATETIME     NULL,
+  accepted_at     DATETIME     NULL,
+  remark          VARCHAR(255) NULL,
+  created_by      BIGINT       NULL,
+  created_at      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_report_no (report_no),
+  KEY idx_report_status (status),
+  CONSTRAINT fk_report_creator FOREIGN KEY (created_by) REFERENCES user (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE compliance_check (
+  id          BIGINT       NOT NULL AUTO_INCREMENT,
+  check_no    VARCHAR(24)  NOT NULL,
+  check_type  ENUM('CONTAINER_NO','WAYBILL_COMPLETE','INVOICE_MATCH','FINANCE_BALANCE','MESSAGE_QUALITY') NOT NULL,
+  target_type VARCHAR(30)  NOT NULL,
+  target_id   VARCHAR(50)  NOT NULL,
+  result      ENUM('PASS','WARN','FAIL') NOT NULL,
+  detail      VARCHAR(500) NOT NULL,
+  checked_at  DATETIME     NOT NULL,
+  created_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_check_no (check_no),
+  KEY idx_check_type (check_type, checked_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE ops_config (
+  id           BIGINT       NOT NULL AUTO_INCREMENT,
+  config_key   VARCHAR(60)  NOT NULL,
+  config_value TEXT         NOT NULL,
+  category     VARCHAR(30)  NOT NULL DEFAULT 'GENERAL',
+  description  VARCHAR(200) NULL,
+  editable     TINYINT(1)   NOT NULL DEFAULT 1,
+  updated_by   BIGINT       NULL,
+  updated_at   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_config_key (config_key)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE ops_dict (
+  id         BIGINT       NOT NULL AUTO_INCREMENT,
+  dict_type  VARCHAR(30)  NOT NULL,
+  dict_key   VARCHAR(50)  NOT NULL,
+  dict_value VARCHAR(100) NOT NULL,
+  sort       INT          NOT NULL DEFAULT 0,
+  status     ENUM('ACTIVE','DISABLED') NOT NULL DEFAULT 'ACTIVE',
+  remark     VARCHAR(200) NULL,
+  created_at DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_dict (dict_type, dict_key)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE job_log (
+  id          BIGINT       NOT NULL AUTO_INCREMENT,
+  job_code    VARCHAR(30)  NOT NULL,
+  job_name    VARCHAR(100) NOT NULL,
+  cron        VARCHAR(50)  NULL,
+  status      ENUM('SUCCESS','FAILED','RUNNING') NOT NULL DEFAULT 'SUCCESS',
+  started_at  DATETIME     NOT NULL,
+  finished_at DATETIME     NULL,
+  duration_ms INT          NOT NULL DEFAULT 0,
+  result      VARCHAR(500) NULL,
+  created_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  KEY idx_job_code (job_code, started_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

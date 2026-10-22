@@ -1,6 +1,6 @@
 {
   "name": "multimodal-demo",
-  "version": "0.4.0",
+  "version": "1.0.0",
   "private": true,
   "description": "多式联运供应链平台 Demo（Stage 1 平台基座与受理闭环）",
   "scripts": {
@@ -12,11 +12,14 @@
     "accept:stage2": "node scripts/accept-stage2.mjs",
     "accept:stage3": "node scripts/accept-stage3.mjs",
     "accept:stage4": "node scripts/accept-stage4.mjs",
-    "accept:all": "node scripts/accept.mjs && node scripts/accept-stage2.mjs && node scripts/accept-stage3.mjs && node scripts/accept-stage4.mjs",
+    "accept:stage5": "node scripts/accept-stage5.mjs",
+    "accept:all": "node scripts/accept.mjs && node scripts/accept-stage2.mjs && node scripts/accept-stage3.mjs && node scripts/accept-stage4.mjs && node scripts/accept-stage5.mjs",
     "e2e": "node scripts/e2e-smoke.mjs",
     "e2e:stage2": "node scripts/e2e-stage2.mjs",
     "e2e:stage3": "node scripts/e2e-stage3.mjs",
     "e2e:stage4": "node scripts/e2e-stage4.mjs",
+    "e2e:stage5": "node scripts/e2e-stage5.mjs",
+    "e2e:all": "node scripts/e2e-smoke.mjs && node scripts/e2e-stage2.mjs && node scripts/e2e-stage3.mjs && node scripts/e2e-stage4.mjs && node scripts/e2e-stage5.mjs",
     "db:init": "node api/db/init.mjs"
   },
   "devDependencies": {

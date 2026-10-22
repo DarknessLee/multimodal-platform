@@ -9,6 +9,7 @@ import { seedBusiness } from './seed/business.mjs';
 import { seedStage2 } from './seed/stage2.mjs';
 import { seedStage3 } from './seed/stage3.mjs';
 import { seedStage4 } from './seed/stage4.mjs';
+import { seedStage5 } from './seed/stage5.mjs';
 
 const apiRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 dotenv.config({ path: resolve(apiRoot, '.env') });
@@ -29,7 +30,7 @@ async function main() {
 
   const schemaSql = readFileSync(resolve(apiRoot, 'db/schema.sql'), 'utf8');
   await conn.query(schemaSql);
-  console.log('[db] v1 schema 已重建（53 张表）');
+  console.log('[db] v1 schema 已重建（59 张表）');
 
   const ref = await seedReference(conn);
   console.log(`[db] 主数据：客户 ${ref.customers.length}、伙伴 ${ref.partners.length}、港站 ${ref.nodes.length}、线路 ${ref.routes.length}、货物 ${ref.goods.length}、箱型 ${ref.containerTypes.length}、价格规则 ${ref.priceRules.length}、账号 ${ref.users.length}、合同 ${ref.contracts.length}`);
@@ -38,6 +39,7 @@ async function main() {
   await seedStage2(conn, ref);
   await seedStage3(conn, ref);
   await seedStage4(conn, ref);
+  await seedStage5(conn, ref);
 
   const [counts] = await conn.query(
     `SELECT
@@ -79,7 +81,13 @@ async function main() {
       (SELECT COUNT(*) FROM payment) payments,
       (SELECT COUNT(*) FROM factoring_application) factoring,
       (SELECT COUNT(*) FROM insurance_policy) policies,
-      (SELECT COUNT(*) FROM stat_daily) stat_daily`,
+      (SELECT COUNT(*) FROM stat_daily) stat_daily,
+      (SELECT COUNT(*) FROM integration_adapter) adapters,
+      (SELECT COUNT(*) FROM regulator_report) regulator_reports,
+      (SELECT COUNT(*) FROM compliance_check) compliance_checks,
+      (SELECT COUNT(*) FROM ops_config) ops_configs,
+      (SELECT COUNT(*) FROM ops_dict) ops_dicts,
+      (SELECT COUNT(*) FROM job_log) job_logs`,
   );
   console.log('[db] 数据写入完成：', JSON.stringify(counts[0]));
   await conn.end();

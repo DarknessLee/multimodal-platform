@@ -124,6 +124,48 @@ const routes: RouteRecordRaw[] = [
         meta: { title: '集成中心', permission: 'menu:integration' },
       },
       {
+        path: 'regulator',
+        name: 'regulator',
+        component: () => import('../views/RegulatorView.vue'),
+        meta: { title: '监管中心', permission: 'menu:regulator' },
+      },
+      {
+        path: 'regulator/reports',
+        name: 'regulator-reports',
+        component: () => import('../views/RegulatorReportsView.vue'),
+        meta: { title: '监管报送', permission: 'menu:regulator' },
+      },
+      {
+        path: 'regulator/compliance',
+        name: 'regulator-compliance',
+        component: () => import('../views/ComplianceView.vue'),
+        meta: { title: '合规检查', permission: 'menu:regulator' },
+      },
+      {
+        path: 'ops',
+        name: 'ops',
+        component: () => import('../views/OpsView.vue'),
+        meta: { title: '运营后台', permission: 'menu:ops' },
+      },
+      {
+        path: 'ops/configs',
+        name: 'ops-configs',
+        component: () => import('../views/OpsConfigsView.vue'),
+        meta: { title: '系统配置与字典', permission: 'menu:ops' },
+      },
+      {
+        path: 'ops/jobs',
+        name: 'ops-jobs',
+        component: () => import('../views/OpsJobsView.vue'),
+        meta: { title: '定时任务', permission: 'menu:ops' },
+      },
+      {
+        path: 'acceptance',
+        name: 'acceptance',
+        component: () => import('../views/AcceptanceView.vue'),
+        meta: { title: '全链路验收', permission: 'menu:acceptance' },
+      },
+      {
         path: 'audit/logs',
         name: 'audit-logs',
         component: () => import('../views/AuditLogsView.vue'),

@@ -1,6 +1,8 @@
 // 状态 / 角色 / 运输方式 / 平台主数据的中文 label
 import type {
   ActiveStatus,
+  AdapterStatus,
+  AdapterSystemType,
   AlertLevel,
   AlertStatus,
   AlertType,
@@ -10,6 +12,8 @@ import type {
   BillType,
   CalcMethod,
   ChargeType,
+  ComplianceCheckType,
+  ComplianceResult,
   ContainerMovementType,
   ContainerStatus,
   ContractStatus,
@@ -26,12 +30,14 @@ import type {
   IntegrationStatus,
   InvoiceStatus,
   InvoiceType,
+  JobStatus,
   NodeType,
   NotificationType,
   OcrStatus,
   OrderSource,
   OrderStatus,
   OrderType,
+  OpsDictStatus,
   PartnerType,
   PaymentDirection,
   PaymentMethod,
@@ -42,6 +48,8 @@ import type {
   QuoteStatus,
   ReconItemStatus,
   ReconStatus,
+  ReportStatus,
+  ReportType,
   ResourceType,
   Role,
   ScheduleStatus,
@@ -69,6 +77,7 @@ export const ROLE_LABELS: Record<Role, string> = {
   SETTLEMENT: '结算',
   FINANCE: '金融/保理',
   INSURANCE: '保险',
+  REGULATOR: '监管机构',
   ADMIN: '平台运营',
 };
 
@@ -490,4 +499,60 @@ export const INSURANCE_STATUS_LABELS: Record<InsuranceStatus, string> = {
   ISSUED: '已承保',
   EXPIRED: '已到期',
   CLAIMED: '理赔中',
+};
+
+// ── Stage 5：集成中心 v2 / 监管 / 运营后台 / 全链路验收 ──────────────────────
+
+export const ADAPTER_STATUS_LABELS: Record<AdapterStatus, string> = {
+  ONLINE: '在线',
+  DEGRADED: '降级',
+  OFFLINE: '离线',
+};
+
+export const ADAPTER_SYSTEM_TYPE_LABELS: Record<AdapterSystemType, string> = {
+  RAIL_95306: '铁路 95306',
+  PORT_EDI: '港口 EDI',
+  TAX: '税务电子发票',
+  BANK: '银行支付',
+  CA: 'CA 电子认证',
+  INSURANCE: '保险保单',
+};
+
+export const REPORT_TYPE_LABELS: Record<ReportType, string> = {
+  OPERATION_MONTHLY: '运营月报',
+  SAFETY: '安全报告',
+  COMPLAINT: '投诉处理',
+  STATISTICS: '统计报表',
+};
+
+export const REPORT_STATUS_LABELS: Record<ReportStatus, string> = {
+  DRAFT: '草稿',
+  SUBMITTED: '已提交',
+  ACCEPTED: '已受理',
+  RETURNED: '已退回',
+};
+
+export const COMPLIANCE_CHECK_TYPE_LABELS: Record<ComplianceCheckType, string> = {
+  CONTAINER_NO: '箱号校验',
+  WAYBILL_COMPLETE: '单证完整性',
+  INVOICE_MATCH: '发票一致性',
+  FINANCE_BALANCE: '财务平衡',
+  MESSAGE_QUALITY: '报文质量',
+};
+
+export const COMPLIANCE_RESULT_LABELS: Record<ComplianceResult, string> = {
+  PASS: '通过',
+  WARN: '警告',
+  FAIL: '不通过',
+};
+
+export const OPS_DICT_STATUS_LABELS: Record<OpsDictStatus, string> = {
+  ACTIVE: '启用',
+  DISABLED: '停用',
+};
+
+export const JOB_STATUS_LABELS: Record<JobStatus, string> = {
+  SUCCESS: '成功',
+  FAILED: '失败',
+  RUNNING: '运行中',
 };
