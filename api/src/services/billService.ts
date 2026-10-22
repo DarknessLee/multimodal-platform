@@ -1,7 +1,10 @@
 import { MODE_LABELS, ORDER_STATUS_LABELS } from '../config/labels';
 import { queryOne, txExec, txQuery, txQueryOne, withTransaction } from '../db/pool';
 import { ApiError } from '../errors';
+import { writeAudit } from '../middleware/audit';
+import { emitEvent } from '../platform/eventBus';
 import type {
+  AuthUser,
   BillBreakdownItem,
   BillRow,
   OrderRow,
@@ -19,6 +22,7 @@ interface BillJoinedRow extends BillRow {
   order_origin: string;
   order_destination: string;
   waybill_no: string;
+  customer_name: string | null;
 }
 
 function round2(value: number): number {
@@ -39,9 +43,10 @@ function parseBreakdown(value: unknown): BillBreakdownItem[] {
 /**
  * POST /api/orders/:id/settle（结算出账，事务）
  * 前置：order.status = SIGNED 且无账单，否则 40901
- * 副作用：生成 bill（bill_no = BL + yyyyMMdd + 3 位；total = Σ cost_amount）并置订单 BILLED
+ * 副作用：生成 bill（bill_no = BL + yyyyMMdd + 3 位；total = Σ cost_amount）并置订单 BILLED；
+ *        写审计 + order.settled 事件（银行回执 + 通知）
  */
-export async function settleOrder(orderId: number) {
+export async function settleOrder(orderId: number, user: AuthUser | null = null, ip: string | null = null) {
   const billId = await withTransaction(async (conn) => {
     const order = await txQueryOne<OrderRow>(conn, 'SELECT * FROM orders WHERE id = ? FOR UPDATE', [orderId]);
     if (!order) {
@@ -89,10 +94,46 @@ export async function settleOrder(orderId: number) {
        VALUES (?, ?, ?, ?, 'ISSUED', ?, ?)`,
       [billNo, orderId, waybill.id, totalAmount, JSON.stringify(breakdown), at],
     );
+    const newBillId = Number(inserted.insertId);
 
     await txExec(conn, 'UPDATE orders SET status = ?, updated_at = ? WHERE id = ?', ['BILLED', at, orderId]);
 
-    return Number(inserted.insertId);
+    const customer = order.customer_id
+      ? await txQueryOne<{ name: string }>(conn, 'SELECT name FROM customer WHERE id = ?', [order.customer_id])
+      : null;
+
+    await emitEvent(conn, {
+      eventType: 'order.settled',
+      aggregateType: 'BILL',
+      aggregateId: newBillId,
+      payload: {
+        billId: newBillId,
+        billNo,
+        orderId: Number(order.id),
+        orderNo: order.order_no,
+        waybillId: Number(waybill.id),
+        waybillNo: waybill.waybill_no,
+        amount: totalAmount,
+        customerId: order.customer_id === null ? null : Number(order.customer_id),
+        customerName: customer?.name ?? '',
+        issuedAt: at,
+      },
+    });
+
+    if (user) {
+      await writeAudit(conn, {
+        user,
+        action: 'SETTLE',
+        actionLabel: '生成账单',
+        module: 'settlement',
+        targetType: 'BILL',
+        targetId: newBillId,
+        detail: { billNo, orderId: Number(order.id), orderNo: order.order_no, totalAmount },
+        ip,
+      });
+    }
+
+    return newBillId;
   });
 
   return getBillDetail(billId);
@@ -102,10 +143,11 @@ export async function settleOrder(orderId: number) {
 export async function getBillDetail(billId: number) {
   const bill = await queryOne<BillJoinedRow>(
     `SELECT b.*, o.order_no, o.status AS order_status, o.origin AS order_origin,
-            o.destination AS order_destination, w.waybill_no
+            o.destination AS order_destination, w.waybill_no, c.name AS customer_name
        FROM bill b
        JOIN orders o ON o.id = b.order_id
        JOIN waybill w ON w.id = b.waybill_id
+       LEFT JOIN customer c ON c.id = o.customer_id
       WHERE b.id = ?`,
     [billId],
   );

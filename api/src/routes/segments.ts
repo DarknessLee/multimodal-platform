@@ -1,6 +1,7 @@
 import express from 'express';
 import { z } from 'zod';
 import { okBody } from '../errors';
+import { requirePermission } from '../middleware/rbac';
 import { updateSegmentStatus } from '../services/segmentService';
 import type { SegmentAction } from '../types';
 import { asyncHandler, parseId } from '../utils/http';
@@ -18,6 +19,7 @@ const segmentActionSchema = z.object({
 /** POST /api/segments/:id/status（承运人/港站节点上报推进） */
 router.post(
   '/:id/status',
+  requirePermission('segment:status'),
   asyncHandler(async (req, res) => {
     const segmentId = parseId(req.params.id);
     const body = validate(segmentActionSchema, req.body);
@@ -26,6 +28,7 @@ router.post(
       body.action as SegmentAction,
       body.conditionText ?? undefined,
       req.user!,
+      req.ip ?? null,
     );
     res.json(okBody(data));
   }),

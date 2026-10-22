@@ -1,7 +1,9 @@
 import { WAYBILL_STATUS_LABELS } from '../config/labels';
 import { queryOne, queryRows, txExec, txQuery, txQueryOne, withTransaction } from '../db/pool';
 import { ApiError } from '../errors';
+import { writeAudit } from '../middleware/audit';
 import { buildSignTrackPoint } from '../mock/track';
+import { emitEvent } from '../platform/eventBus';
 import type { AuthUser, OrderRow, SegmentRow, TrackPointRow, WaybillRow } from '../types';
 import { formatDateTime, nowDate } from '../utils/datetime';
 import { dtoSegment, dtoTrackPoint } from './mappers';
@@ -36,9 +38,15 @@ export async function getWaybillTrack(waybillId: number) {
 /**
  * POST /api/waybills/:id/sign（货主签收，事务）
  * 前置：全部分段 COMPLETED 且运单 ARRIVED，否则 40901
- * 副作用：运单 SIGNED / 订单 SIGNED / 箱 DELIVERED / 追加 MTO 签收轨迹
+ * 副作用：运单 SIGNED / 订单 SIGNED / 箱 DELIVERED / 追加 MTO 签收轨迹；
+ *        写审计 + order.signed 事件（电子发票要素 + 通知结算）
  */
-export async function signWaybill(waybillId: number, signerName: string, user: AuthUser) {
+export async function signWaybill(
+  waybillId: number,
+  signerName: string,
+  user: AuthUser,
+  ip: string | null = null,
+) {
   const waybill = await queryOne<WaybillRow>('SELECT * FROM waybill WHERE id = ?', [waybillId]);
   if (!waybill) {
     throw new ApiError(40401, '运单不存在');
@@ -50,9 +58,22 @@ export async function signWaybill(waybillId: number, signerName: string, user: A
   if (user.role !== 'SHIPPER') {
     throw new ApiError(40301, '仅货主可签收');
   }
+  const owns = Number(order.shipper_id) === user.uid ||
+    (user.role === 'SHIPPER' && user.uid && order.customer_id !== null && Number(order.customer_id) === Number(user.uid));
   if (Number(order.shipper_id) !== user.uid) {
-    throw new ApiError(40301, '只能签收自己的订单');
+    // v1 报价转单可能由货代创建；货主账号按客户归属放行
+    const shipperOwner = await queryOne<{ customer_id: number | null }>(
+      'SELECT customer_id FROM user WHERE id = ?',
+      [user.uid],
+    );
+    const customerId = shipperOwner?.customer_id === null || shipperOwner?.customer_id === undefined
+      ? null
+      : Number(shipperOwner.customer_id);
+    if (customerId === null || order.customer_id === null || customerId !== Number(order.customer_id)) {
+      throw new ApiError(40301, '只能签收自己的订单');
+    }
   }
+  void owns;
 
   return withTransaction(async (conn) => {
     const lockedWaybill = await txQueryOne<WaybillRow>(conn, 'SELECT * FROM waybill WHERE id = ? FOR UPDATE', [
@@ -114,6 +135,43 @@ export async function signWaybill(waybillId: number, signerName: string, user: A
         signPoint.description,
       ],
     );
+
+    const customer = lockedOrder.customer_id
+      ? await txQueryOne<{ name: string }>(conn, 'SELECT name FROM customer WHERE id = ?', [lockedOrder.customer_id])
+      : null;
+
+    await emitEvent(conn, {
+      eventType: 'order.signed',
+      aggregateType: 'WAYBILL',
+      aggregateId: Number(lockedWaybill.id),
+      payload: {
+        orderId: Number(lockedOrder.id),
+        orderNo: lockedOrder.order_no,
+        waybillId: Number(lockedWaybill.id),
+        waybillNo: lockedWaybill.waybill_no,
+        signerName,
+        signedAt: at,
+        amount: Number(lockedOrder.total_amount),
+        customerId: lockedOrder.customer_id === null ? null : Number(lockedOrder.customer_id),
+        customerName: customer?.name ?? '',
+      },
+    });
+
+    await writeAudit(conn, {
+      user,
+      action: 'SIGN',
+      actionLabel: '运单签收',
+      module: 'waybill',
+      targetType: 'WAYBILL',
+      targetId: Number(lockedWaybill.id),
+      detail: {
+        waybillNo: lockedWaybill.waybill_no,
+        orderId: Number(lockedOrder.id),
+        orderNo: lockedOrder.order_no,
+        signerName,
+      },
+      ip,
+    });
 
     return {
       waybill: {

@@ -60,8 +60,8 @@
         </div>
 
         <el-alert
-          v-if="detail.order.status !== 'CREATED'"
-          title="该订单已完成调度，不能重复调度"
+          v-if="!canDispatchNow"
+          title="该订单当前状态不允许调度（已调度 / 已在途 / 已取消）"
           type="warning"
           show-icon
           :closable="false"
@@ -105,7 +105,7 @@
         </div>
 
         <!-- 调度预览 -->
-        <div v-if="detail.order.status === 'CREATED' && selectedCarrier" class="card mt-16">
+        <div v-if="canDispatchNow && selectedCarrier" class="card mt-16">
           <h3 class="card-title"><span class="card-title-text">调度预览</span></h3>
           <div class="preview-line">
             <div class="preview-node">
@@ -187,6 +187,11 @@ const selectedCarrier = computed<RoadCarrier | null>(() => {
 });
 
 const estimatedTotal = computed(() => (selectedCarrier.value?.price ?? 0) + 5200 + 8600);
+
+/** v1：CREATED / CONTRACTED / CONFIRMED 均可调度（docs/04 §5.5） */
+const canDispatchNow = computed(() =>
+  ['CREATED', 'CONTRACTED', 'CONFIRMED'].includes(detail.value?.order.status ?? ''),
+);
 
 async function load(): Promise<void> {
   loading.value = true;

@@ -4,6 +4,9 @@ import {
   CONTAINER_STATUS_LABELS,
   MODE_LABELS,
   ORDER_STATUS_LABELS,
+  ORDER_TYPE_LABELS,
+  PRIORITY_LABELS,
+  SOURCE_LABELS,
   WAYBILL_STATUS_LABELS,
   segmentStatusLabel,
 } from '../config/labels';
@@ -135,5 +138,17 @@ export function dtoOrderListItem(row: OrderListRow, currentSegment: CurrentSegme
     currentSegment,
     billId: toNullableNumber(row.bill_id),
     billNo: row.bill_no ?? null,
+    // Stage 1 新增字段
+    orderType: row.order_type,
+    orderTypeLabel: ORDER_TYPE_LABELS[row.order_type],
+    source: row.source,
+    sourceLabel: SOURCE_LABELS[row.source],
+    customerName: row.customer_name ?? null,
+    totalAmount: toNumber(row.total_amount),
+    currency: row.currency ?? 'CNY',
+    priority: row.priority,
+    priorityLabel: PRIORITY_LABELS[row.priority],
+    contractNo: row.contract_no ?? null,
+    quoteNo: row.quote_no ?? null,
   };
 }

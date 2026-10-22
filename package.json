@@ -1,13 +1,14 @@
 {
   "name": "multimodal-demo",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
-  "description": "多式联运演示版 v0（单 Web 端多角色）",
+  "description": "多式联运供应链平台 Demo（Stage 1 平台基座与受理闭环）",
   "scripts": {
     "setup": "node scripts/setup.mjs",
     "dev": "node scripts/dev.mjs",
     "build": "npm --prefix api run build && npm --prefix web run build",
     "accept": "node scripts/accept.mjs",
+    "accept:v0": "node scripts/accept-v0.mjs",
     "e2e": "node scripts/e2e-smoke.mjs",
     "db:init": "node api/db/init.mjs"
   },

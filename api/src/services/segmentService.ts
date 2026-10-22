@@ -1,6 +1,7 @@
 import { segmentStatusLabel } from '../config/labels';
 import { txExec, txQuery, txQueryOne, withTransaction } from '../db/pool';
 import { ApiError } from '../errors';
+import { writeAudit } from '../middleware/audit';
 import { buildActionTrackPoints } from '../mock/track';
 import type {
   AuthUser,
@@ -27,6 +28,20 @@ const RULES: Record<SegmentAction, ActionRule> = {
   DEPART: { from: 'ACCEPTED', to: 'IN_TRANSIT', label: '提货出发' },
   GATE_IN: { from: 'PENDING', to: 'IN_TRANSIT', label: '进场确认' },
   ARRIVE: { from: 'IN_TRANSIT', to: 'COMPLETED', label: '到达确认' },
+};
+
+const ROAD_ACTIONS: Record<SegmentAction, [string, string]> = {
+  ACCEPT: ['SEGMENT_ACCEPT', '司机接单'],
+  DEPART: ['SEGMENT_DEPART', '上报已提货'],
+  GATE_IN: ['TERMINAL_GATE_IN', '确认进场'],
+  ARRIVE: ['SEGMENT_ARRIVE', '上报已送达'],
+};
+
+const TERMINAL_ACTIONS: Record<SegmentAction, [string, string]> = {
+  ACCEPT: ['SEGMENT_ACCEPT', '司机接单'],
+  DEPART: ['SEGMENT_DEPART', '上报已提货'],
+  GATE_IN: ['TERMINAL_GATE_IN', '确认进场'],
+  ARRIVE: ['TERMINAL_ARRIVE', '到港到站确认'],
 };
 
 /** 权限矩阵（契约第 2 节）：承运人只碰自己的公路段；港站只碰海运/铁路段 */
@@ -74,13 +89,14 @@ interface SegmentUpdateResult {
  * POST /api/segments/:id/status：节点上报/推进（事务）
  * - 状态机 + 禁止跨段推进（40901）
  * - 每次动作追加 1~3 个 track_point，seq 按运单全局递增
- * - 订单/运单/箱状态联动（契约第 2、4.6 节）
+ * - 订单/运单/箱状态联动；写审计
  */
 export async function updateSegmentStatus(
   segmentId: number,
   action: SegmentAction,
   conditionText: string | undefined,
   user: AuthUser,
+  ip: string | null = null,
 ): Promise<SegmentUpdateResult> {
   return withTransaction(async (conn) => {
     const segment = await txQueryOne<SegmentRow>(
@@ -229,6 +245,27 @@ export async function updateSegmentStatus(
         [at, order.id],
       );
     }
+
+    // 审计（写操作）
+    const [auditAction, auditLabel] =
+      segment.mode === 'ROAD' ? ROAD_ACTIONS[action] : TERMINAL_ACTIONS[action];
+    await writeAudit(conn, {
+      user,
+      action: auditAction,
+      actionLabel: auditLabel,
+      module: segment.mode === 'ROAD' ? 'carrier' : 'terminal',
+      targetType: 'WAYBILL',
+      targetId: Number(segment.waybill_id),
+      detail: {
+        segmentId: Number(segment.id),
+        orderId: Number(order.id),
+        orderNo: order.order_no,
+        action,
+        fromStatus: segment.status,
+        toStatus: rule.to,
+      },
+      ip,
+    });
 
     const updatedSegment = await txQueryOne<SegmentRow>(
       conn,

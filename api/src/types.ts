@@ -1,9 +1,32 @@
 // 全局类型定义：角色 / 状态机 / 数据库行 / DTO
-// 契约依据：docs/02-接口契约.md（camelCase 输出由 services/mappers.ts 统一映射）
+// v0 字段只增不改；Stage 1 扩展 9 角色、订单 v1 状态与平台表。
 
-export type Role = 'SHIPPER' | 'MTO' | 'CARRIER' | 'TERMINAL' | 'SETTLEMENT';
+export type Role =
+  | 'SHIPPER'
+  | 'FORWARDER'
+  | 'MTO'
+  | 'CARRIER'
+  | 'RAIL_CARRIER'
+  | 'SEA_CARRIER'
+  | 'TERMINAL'
+  | 'SETTLEMENT'
+  | 'ADMIN';
 
-export type OrderStatus = 'CREATED' | 'DISPATCHED' | 'IN_TRANSIT' | 'ARRIVED' | 'SIGNED' | 'BILLED';
+export type OrderStatus =
+  | 'CREATED'
+  | 'CONTRACTED'
+  | 'CONFIRMED'
+  | 'DISPATCHED'
+  | 'IN_TRANSIT'
+  | 'ARRIVED'
+  | 'SIGNED'
+  | 'BILLED'
+  | 'CANCELLED';
+
+export type OrderType = 'ROAD_RAIL' | 'RAIL_SEA' | 'ROAD_RAIL_SEA';
+export type OrderSource = 'QUICK' | 'QUOTE';
+export type Priority = 'NORMAL' | 'URGENT';
+
 export type WaybillStatus = 'PENDING' | 'IN_TRANSIT' | 'ARRIVED' | 'SIGNED';
 export type SegmentStatus = 'PENDING' | 'ACCEPTED' | 'IN_TRANSIT' | 'ARRIVED' | 'COMPLETED';
 export type SegmentMode = 'ROAD' | 'SEA' | 'RAIL';
@@ -12,12 +35,38 @@ export type ContainerStatus = 'EMPTY' | 'GATE_IN' | 'LOADED' | 'IN_TRANSIT' | 'A
 export type BillStatus = 'ISSUED' | 'PAID';
 export type TrackSource = 'MOCK_GPS' | 'MOCK_EDI' | 'CARRIER_REPORT' | 'TERMINAL_REPORT' | 'MTO';
 
-/** JWT 解出的登录用户 */
+export type QuoteStatus = 'DRAFT' | 'SENT' | 'ACCEPTED' | 'EXPIRED' | 'CANCELLED';
+export type ContractStatus = 'DRAFT' | 'PENDING_SIGN' | 'SIGNED' | 'TERMINATED';
+export type ContractType = 'FRAMEWORK' | 'SPOT';
+export type PartnerType =
+  | 'ROAD_CARRIER'
+  | 'RAIL_OPERATOR'
+  | 'SEA_CARRIER'
+  | 'PORT'
+  | 'RAIL_STATION'
+  | 'DEPOT'
+  | 'WAREHOUSE'
+  | 'FORWARDER'
+  | 'FINANCE'
+  | 'INSURANCE'
+  | 'REGULATOR';
+export type NodeType = 'PORT' | 'RAIL_STATION' | 'DEPOT' | 'WAREHOUSE';
+export type ActiveStatus = 'ACTIVE' | 'DISABLED';
+export type PriceRuleMode = SegmentMode | 'PORT' | 'OTHER';
+export type ChargeType = 'BASE' | 'SURCHARGE';
+export type CalcMethod = 'PER_CONTAINER' | 'PER_KM' | 'PER_TON' | 'PER_TEU' | 'FLAT';
+export type IntegrationDirection = 'IN' | 'OUT';
+export type IntegrationStatus = 'PENDING' | 'SUCCESS' | 'FAILED' | 'RETRYING';
+export type NotificationType = 'TODO' | 'ALERT' | 'INFO';
+
+/** JWT 解出的登录用户（customer_id 由 requireAuth 从 DB 补全，便于按客户过滤） */
 export interface AuthUser {
   uid: number;
   username: string;
   role: Role;
   name: string;
+  customer_id?: number | null;
+  partner_id?: number | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -30,6 +79,12 @@ export interface UserRow {
   password_hash: string;
   display_name: string;
   role: Role;
+  customer_id: number | null;
+  partner_id: number | null;
+  phone: string | null;
+  email: string | null;
+  status: ActiveStatus;
+  last_login_at: string | null;
   created_at: string;
 }
 
@@ -46,16 +101,36 @@ export interface OrderRow {
   destination: string;
   required_pickup_date: string;
   remark: string | null;
+  order_type: OrderType;
+  customer_id: number | null;
+  consignee_customer_id: number | null;
+  notify_customer_id: number | null;
+  contract_id: number | null;
+  quote_id: number | null;
+  route_template_id: number | null;
+  priority: Priority;
+  source: OrderSource;
+  total_amount: number;
+  currency: string;
   created_at: string;
   updated_at: string;
 }
 
-/** 订单 + 货主显示名（GET /orders/:id 使用） */
+/** 订单 + 关联主数据（GET /orders/:id 使用） */
 export interface OrderJoinedRow extends OrderRow {
   shipper_name: string;
+  customer_name: string | null;
+  customer_credit_level: string | null;
+  consignee_name: string | null;
+  consignee_contact_name: string | null;
+  contract_no: string | null;
+  quote_no: string | null;
+  quote_total_amount: number | null;
+  route_name: string | null;
+  route_modes: unknown;
 }
 
-/** GET /orders 列表行（LEFT JOIN waybill / bill） */
+/** GET /orders 列表行（LEFT JOIN waybill / bill / customer / contract / quote） */
 export interface OrderListRow {
   id: number;
   order_no: string;
@@ -69,6 +144,14 @@ export interface OrderListRow {
   required_pickup_date: string;
   created_at: string;
   shipper_name: string;
+  order_type: OrderType;
+  source: OrderSource;
+  priority: Priority;
+  total_amount: number;
+  currency: string;
+  customer_name: string | null;
+  contract_no: string | null;
+  quote_no: string | null;
   waybill_id: number | null;
   waybill_no: string | null;
   waybill_status: WaybillStatus | null;
@@ -156,6 +239,285 @@ export interface BillBreakdownItem {
   startNode: string;
   endNode: string;
   amount: number;
+}
+
+// ── Stage 1 平台表 ──────────────────────────────────────────────────────────
+
+export interface CustomerRow {
+  id: number;
+  customer_no: string;
+  name: string;
+  short_name: string;
+  credit_code: string;
+  contact_name: string;
+  contact_phone: string;
+  email: string | null;
+  region_code: string;
+  address: string;
+  industry: string;
+  credit_level: 'AAA' | 'AA' | 'A' | 'B' | 'C';
+  status: ActiveStatus;
+  remark: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PartnerRow {
+  id: number;
+  partner_no: string;
+  name: string;
+  short_name: string;
+  type: PartnerType;
+  credit_code: string;
+  contact_name: string;
+  contact_phone: string;
+  email: string | null;
+  region_code: string;
+  address: string;
+  qualifications: unknown;
+  rating: number;
+  settlement_account: string | null;
+  status: ActiveStatus;
+  remark: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PortStationRow {
+  id: number;
+  node_code: string;
+  node_name: string;
+  node_type: NodeType;
+  region_code: string;
+  address: string;
+  lng: number;
+  lat: number;
+  operator_partner_id: number | null;
+  capacity_teu: number | null;
+  operating_hours: string | null;
+  status: ActiveStatus;
+  created_at: string;
+}
+
+export interface RouteTemplateRow {
+  id: number;
+  route_code: string;
+  route_name: string;
+  origin_node_id: number;
+  destination_node_id: number;
+  transit_node_ids: unknown;
+  modes: unknown;
+  distance_km: number;
+  transit_days: number;
+  base_cost: number;
+  reliability: number;
+  status: ActiveStatus;
+  remark: string | null;
+  created_at: string;
+}
+
+export interface GoodsCatalogRow {
+  id: number;
+  goods_code: string;
+  goods_name: string;
+  category: string;
+  hs_code: string | null;
+  dangerous_flag: number | boolean;
+  packaging: string | null;
+  unit: string;
+  default_weight: number | null;
+  status: ActiveStatus;
+}
+
+export interface ContainerTypeRow {
+  id: number;
+  code: string;
+  name: string;
+  inner_volume_cbm: number;
+  max_payload_t: number;
+  tare_weight_t: number;
+  teu: number;
+  status: ActiveStatus;
+}
+
+export interface PriceRuleRow {
+  id: number;
+  rule_no: string;
+  rule_name: string;
+  mode: PriceRuleMode;
+  charge_type: ChargeType;
+  carrier_partner_id: number | null;
+  route_template_id: number | null;
+  origin_node_id: number | null;
+  destination_node_id: number | null;
+  container_type_id: number | null;
+  customer_id: number | null;
+  contract_id: number | null;
+  calc_method: CalcMethod;
+  unit_price: number;
+  unit: string;
+  min_charge: number;
+  ladder: unknown;
+  currency: string;
+  priority: number;
+  effective_from: string;
+  effective_to: string;
+  status: ActiveStatus;
+  remark: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ContractRow {
+  id: number;
+  contract_no: string;
+  customer_id: number;
+  contract_type: ContractType;
+  title: string;
+  effective_from: string;
+  effective_to: string;
+  payment_terms: string;
+  credit_limit: number;
+  discount_rate: number;
+  settle_currency: string;
+  status: ContractStatus;
+  signer_name: string | null;
+  signed_at: string | null;
+  sign_hash: string | null;
+  file_url: string | null;
+  created_by: number | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface QuoteRow {
+  id: number;
+  quote_no: string;
+  customer_id: number;
+  order_type: OrderType;
+  route_template_id: number;
+  origin_node_id: number;
+  destination_node_id: number;
+  container_type_id: number;
+  container_count: number;
+  goods_code: string | null;
+  cargo_name: string;
+  cargo_weight: number;
+  required_date: string;
+  transit_days: number;
+  valid_until: string;
+  total_amount: number;
+  cost_amount: number;
+  currency: string;
+  status: QuoteStatus;
+  created_by: number;
+  sent_at: string | null;
+  accepted_at: string | null;
+  order_id: number | null;
+  remark: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface QuoteItemRow {
+  id: number;
+  quote_id: number;
+  seq: number;
+  mode: 'ROAD' | 'SEA' | 'RAIL' | 'PORT';
+  charge_type: ChargeType;
+  description: string;
+  carrier_partner_id: number | null;
+  quantity: number;
+  unit: string;
+  unit_price: number;
+  amount: number;
+  cost_amount: number;
+  calculation: unknown;
+}
+
+export interface OrderCargoRow {
+  id: number;
+  order_id: number;
+  seq: number;
+  goods_code: string | null;
+  goods_name: string;
+  quantity: number;
+  unit: string;
+  weight_t: number;
+  volume_cbm: number | null;
+  container_type_id: number | null;
+  container_count: number;
+  dangerous_flag: number | boolean;
+  packaging: string | null;
+  remark: string | null;
+}
+
+export interface IntegrationMessageRow {
+  id: number;
+  msg_no: string;
+  system_code: string;
+  system_name: string;
+  direction: IntegrationDirection;
+  msg_type: string;
+  standard: string;
+  related_type: string | null;
+  related_id: string | null;
+  payload: unknown;
+  status: IntegrationStatus;
+  retry_count: number;
+  response_payload: unknown;
+  error_message: string | null;
+  created_at: string;
+  processed_at: string | null;
+}
+
+export interface AuditLogRow {
+  id: number;
+  user_id: number | null;
+  username: string | null;
+  role: string | null;
+  action: string;
+  action_label: string;
+  module: string;
+  target_type: string | null;
+  target_id: string | null;
+  detail: unknown;
+  ip: string | null;
+  created_at: string;
+}
+
+export interface NotificationRow {
+  id: number;
+  user_id: number | null;
+  role: string | null;
+  type: NotificationType;
+  title: string;
+  content: string;
+  related_type: string | null;
+  related_id: string | null;
+  read_flag: number | boolean;
+  created_at: string;
+}
+
+export interface EventOutboxRow {
+  id: number;
+  event_type: string;
+  aggregate_type: string;
+  aggregate_id: string;
+  payload: unknown;
+  status: 'PENDING' | 'PUBLISHED' | 'FAILED';
+  retry_count: number;
+  created_at: string;
+  published_at: string | null;
+}
+
+export interface DictDataRow {
+  id: number;
+  dict_type: string;
+  dict_key: string;
+  dict_label: string;
+  sort_no: number;
+  status: ActiveStatus;
 }
 
 // ---------------------------------------------------------------------------
@@ -253,14 +615,27 @@ export interface OrderListItemDto {
   currentSegment: CurrentSegmentDto | null;
   billId: number | null;
   billNo: string | null;
+  // Stage 1 新增字段
+  orderType: OrderType;
+  orderTypeLabel: string;
+  source: OrderSource;
+  sourceLabel: string;
+  customerName: string | null;
+  totalAmount: number;
+  currency: string;
+  priority: Priority;
+  priorityLabel: string;
+  contractNo: string | null;
+  quoteNo: string | null;
 }
 
-// 把 AuthUser 挂到 Express Request 上（middleware/auth.ts 填充）
+// 把 AuthUser / permissions 挂到 Express Request 上
 declare global {
   // eslint-disable-next-line @typescript-eslint/no-namespace
   namespace Express {
     interface Request {
       user?: AuthUser;
+      permissions?: string[];
     }
   }
 }

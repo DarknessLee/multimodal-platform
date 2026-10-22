@@ -1,8 +1,21 @@
-// 状态 / 角色 / 运输方式的中文 label（契约 2、4 节冻结）
+// 状态 / 角色 / 运输方式 / 平台主数据的中文 label
 import type {
+  ActiveStatus,
   BillStatus,
+  CalcMethod,
+  ChargeType,
   ContainerStatus,
+  ContractStatus,
+  ContractType,
+  IntegrationStatus,
+  NodeType,
+  NotificationType,
+  OrderSource,
   OrderStatus,
+  OrderType,
+  PartnerType,
+  Priority,
+  QuoteStatus,
   Role,
   SegmentMode,
   SegmentStatus,
@@ -11,25 +24,49 @@ import type {
 
 export const ROLE_LABELS: Record<Role, string> = {
   SHIPPER: '货主',
-  MTO: '调度',
+  FORWARDER: '货代',
+  MTO: '多式联运经营人',
   CARRIER: '公路承运人',
+  RAIL_CARRIER: '铁路承运人',
+  SEA_CARRIER: '水路承运人',
   TERMINAL: '港站',
   SETTLEMENT: '结算',
+  ADMIN: '平台运营',
 };
 
-export const MODE_LABELS: Record<SegmentMode, string> = {
+export const MODE_LABELS: Record<SegmentMode | 'PORT', string> = {
   ROAD: '公路',
   SEA: '海运',
   RAIL: '铁路',
+  PORT: '港杂',
 };
 
 export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
   CREATED: '待调度',
+  CONTRACTED: '已签合同',
+  CONFIRMED: '已确认',
   DISPATCHED: '已调度',
   IN_TRANSIT: '运输中',
   ARRIVED: '已到达',
   SIGNED: '已签收',
   BILLED: '已出账',
+  CANCELLED: '已取消',
+};
+
+export const ORDER_TYPE_LABELS: Record<OrderType, string> = {
+  ROAD_RAIL: '公铁联运',
+  RAIL_SEA: '铁水联运',
+  ROAD_RAIL_SEA: '公铁水联运',
+};
+
+export const SOURCE_LABELS: Record<OrderSource, string> = {
+  QUICK: '快速下单',
+  QUOTE: '报价转单',
+};
+
+export const PRIORITY_LABELS: Record<Priority, string> = {
+  NORMAL: '普通',
+  URGENT: '加急',
 };
 
 export const WAYBILL_STATUS_LABELS: Record<WaybillStatus, string> = {
@@ -60,6 +97,85 @@ export const CONTAINER_STATUS_LABELS: Record<ContainerStatus, string> = {
   DELIVERED: '已送达',
 };
 
+export const QUOTE_STATUS_LABELS: Record<QuoteStatus, string> = {
+  DRAFT: '询价中',
+  SENT: '已报价',
+  ACCEPTED: '已接受',
+  EXPIRED: '已过期',
+  CANCELLED: '已取消',
+};
+
+export const CONTRACT_STATUS_LABELS: Record<ContractStatus, string> = {
+  DRAFT: '草稿',
+  PENDING_SIGN: '待签署',
+  SIGNED: '已签署',
+  TERMINATED: '已终止',
+};
+
+export const CONTRACT_TYPE_LABELS: Record<ContractType, string> = {
+  FRAMEWORK: '框架合同',
+  SPOT: '单票合同',
+};
+
+export const PARTNER_TYPE_LABELS: Record<PartnerType, string> = {
+  ROAD_CARRIER: '公路承运人',
+  RAIL_OPERATOR: '铁路运营方',
+  SEA_CARRIER: '水路承运人',
+  PORT: '港口',
+  RAIL_STATION: '铁路货场',
+  DEPOT: '堆场',
+  WAREHOUSE: '仓库',
+  FORWARDER: '货代',
+  FINANCE: '金融机构',
+  INSURANCE: '保险机构',
+  REGULATOR: '监管机构',
+};
+
+export const NODE_TYPE_LABELS: Record<NodeType, string> = {
+  PORT: '港口',
+  RAIL_STATION: '铁路货场',
+  DEPOT: '堆场',
+  WAREHOUSE: '仓库',
+};
+
+export const ACTIVE_STATUS_LABELS: Record<ActiveStatus, string> = {
+  ACTIVE: '正常',
+  DISABLED: '停用',
+};
+
+export const CHARGE_TYPE_LABELS: Record<ChargeType, string> = {
+  BASE: '基础费',
+  SURCHARGE: '附加费',
+};
+
+export const CALC_METHOD_LABELS: Record<CalcMethod, string> = {
+  PER_CONTAINER: '按箱',
+  PER_KM: '按公里',
+  PER_TON: '按吨',
+  PER_TEU: '按TEU',
+  FLAT: '一口价',
+};
+
+export const PAYMENT_TERMS_LABELS: Record<string, string> = {
+  PREPAID: '预付',
+  MONTHLY_30: '月结30天',
+  MONTHLY_60: '月结60天',
+  COD: '货到付款',
+};
+
+export const INTEGRATION_STATUS_LABELS: Record<IntegrationStatus, string> = {
+  PENDING: '待处理',
+  SUCCESS: '成功',
+  FAILED: '失败',
+  RETRYING: '重试中',
+};
+
+export const NOTIFICATION_TYPE_LABELS: Record<NotificationType, string> = {
+  TODO: '待办',
+  ALERT: '预警',
+  INFO: '通知',
+};
+
 /** 分段 PENDING 的中文按运输方式区分：公路=待接单，海运/铁路=待进场（契约 4.4） */
 export function segmentStatusLabel(mode: SegmentMode, status: SegmentStatus): string {
   if (status === 'PENDING') {
@@ -67,3 +183,16 @@ export function segmentStatusLabel(mode: SegmentMode, status: SegmentStatus): st
   }
   return SEGMENT_STATUS_LABELS[status];
 }
+
+/** 订单状态固定排序（看板 distribution 用） */
+export const ORDER_STATUS_ORDER: OrderStatus[] = [
+  'CREATED',
+  'CONTRACTED',
+  'CONFIRMED',
+  'DISPATCHED',
+  'IN_TRANSIT',
+  'ARRIVED',
+  'SIGNED',
+  'BILLED',
+  'CANCELLED',
+];

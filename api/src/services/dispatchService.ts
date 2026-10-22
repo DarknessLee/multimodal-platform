@@ -1,8 +1,10 @@
 import { txExec, txQuery, txQueryOne, withTransaction } from '../db/pool';
 import { ApiError } from '../errors';
+import { writeAudit } from '../middleware/audit';
+import { emitEvent } from '../platform/eventBus';
 import { ROAD_PLANNED_END_HOURS, ROAD_PLANNED_START_HOURS, SEA_SEGMENT, RAIL_SEGMENT, findRoadCarrier } from '../mock/carriers';
 import { routeEndNode, routeStartNode } from '../mock/routes';
-import type { OrderRow, SegmentRow, SegmentMode } from '../types';
+import type { AuthUser, OrderRow, SegmentRow, SegmentMode } from '../types';
 import { addHours, formatDateTime, nowDate, todayCompact } from '../utils/datetime';
 import { dtoSegment } from './mappers';
 import { nextDailyNo } from './sequence';
@@ -20,11 +22,19 @@ interface NewSegmentPlan {
   costAmount: number;
 }
 
+/** 可调度订单状态（Stage 1：快速单/合同单/报价确认单） */
+export const DISPATCHABLE_STATUSES = ['CREATED', 'CONTRACTED', 'CONFIRMED'] as const;
+
 /**
  * POST /api/orders/:id/dispatch（MTO）
- * 单事务：创建运单 + 3 个分段（公路/海运/铁路），订单 → DISPATCHED
+ * 单事务：创建运单 + 3 个分段（公路/海运/铁路），订单 → DISPATCHED；写审计与集成事件
  */
-export async function dispatchOrder(orderId: number, roadCarrierCode: string) {
+export async function dispatchOrder(
+  orderId: number,
+  roadCarrierCode: string,
+  user: AuthUser,
+  ip: string | null,
+) {
   const roadCarrier = findRoadCarrier(roadCarrierCode);
   if (!roadCarrier) {
     throw new ApiError(40001, '公路承运商不存在');
@@ -35,7 +45,7 @@ export async function dispatchOrder(orderId: number, roadCarrierCode: string) {
     if (!order) {
       throw new ApiError(40401, '订单不存在');
     }
-    if (order.status !== 'CREATED') {
+    if (!(DISPATCHABLE_STATUSES as readonly string[]).includes(order.status)) {
       throw new ApiError(40901, '当前订单状态不允许调度');
     }
 
@@ -120,6 +130,38 @@ export async function dispatchOrder(orderId: number, roadCarrierCode: string) {
     }
 
     await txExec(conn, 'UPDATE orders SET status = ?, updated_at = ? WHERE id = ?', ['DISPATCHED', at, orderId]);
+
+    await emitEvent(conn, {
+      eventType: 'order.dispatched',
+      aggregateType: 'ORDER',
+      aggregateId: Number(order.id),
+      payload: {
+        orderId: Number(order.id),
+        orderNo: order.order_no,
+        waybillId,
+        waybillNo,
+        carrierUserId: carrierUser ? Number(carrierUser.id) : null,
+        carrierCode: roadCarrier.code,
+        carrierName: roadCarrier.name,
+        containerType: order.container_type,
+        containerCount: Number(order.container_count),
+        cargoName: order.cargo_name,
+        requiredPickupDate: order.required_pickup_date,
+        customerId: order.customer_id === null ? null : Number(order.customer_id),
+        dispatchedAt: at,
+      },
+    });
+
+    await writeAudit(conn, {
+      user,
+      action: 'ORDER_DISPATCH',
+      actionLabel: '人工调度',
+      module: 'dispatch',
+      targetType: 'ORDER',
+      targetId: Number(order.id),
+      detail: { orderNo: order.order_no, waybillNo, carrierCode: roadCarrier.code },
+      ip,
+    });
 
     const segments = await txQuery<SegmentRow>(
       conn,

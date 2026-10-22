@@ -1,6 +1,7 @@
 import express from 'express';
 import { z } from 'zod';
 import { okBody } from '../errors';
+import { requirePermission } from '../middleware/rbac';
 import { getWaybillTrack, signWaybill } from '../services/waybillService';
 import { asyncHandler, parseId } from '../utils/http';
 import { validate } from '../utils/validate';
@@ -24,10 +25,11 @@ router.get(
 /** POST /api/waybills/:id/sign（货主签收） */
 router.post(
   '/:id/sign',
+  requirePermission('waybill:sign'),
   asyncHandler(async (req, res) => {
     const waybillId = parseId(req.params.id);
     const body = validate(signSchema, req.body);
-    const data = await signWaybill(waybillId, body.signerName, req.user!);
+    const data = await signWaybill(waybillId, body.signerName, req.user!, req.ip ?? null);
     res.json(okBody(data));
   }),
 );

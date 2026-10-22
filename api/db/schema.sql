@@ -1,48 +1,400 @@
--- 多式联运演示版 v0 — 7 张表（utf8mb4 / InnoDB）
+-- 多式联运演示版 v1 — Stage 1 schema（7 张 v0 表 + 19 张平台表，utf8mb4 / InnoDB）
 -- 由 api/db/init.mjs 执行：先 DROP 全部表再建表，保证演示数据可重置。
--- 约定：JSON 输出用 camelCase；表名用 orders（避开 MySQL 保留字 order）。
+-- 约定：JSON 输出 camelCase；表名 orders 避开 MySQL 保留字 order；v0 字段只增不改。
 
+SET NAMES utf8mb4;
+
+DROP TABLE IF EXISTS notification;
+DROP TABLE IF EXISTS event_outbox;
+DROP TABLE IF EXISTS audit_log;
+DROP TABLE IF EXISTS integration_message;
+DROP TABLE IF EXISTS order_cargo;
 DROP TABLE IF EXISTS bill;
 DROP TABLE IF EXISTS track_point;
 DROP TABLE IF EXISTS waybill_segment;
 DROP TABLE IF EXISTS waybill;
 DROP TABLE IF EXISTS container;
 DROP TABLE IF EXISTS orders;
+DROP TABLE IF EXISTS quote_item;
+DROP TABLE IF EXISTS quote;
+DROP TABLE IF EXISTS contract;
 DROP TABLE IF EXISTS user;
+DROP TABLE IF EXISTS price_rule;
+DROP TABLE IF EXISTS container_type;
+DROP TABLE IF EXISTS goods_catalog;
+DROP TABLE IF EXISTS route_template;
+DROP TABLE IF EXISTS port_station;
+DROP TABLE IF EXISTS partner;
+DROP TABLE IF EXISTS customer;
+DROP TABLE IF EXISTS role_permission;
+DROP TABLE IF EXISTS permission;
+DROP TABLE IF EXISTS role;
+DROP TABLE IF EXISTS dict_data;
 
+-- ── 平台基础：角色 / 权限 / 字典 ────────────────────────────────────────────
+CREATE TABLE role (
+  id          BIGINT       NOT NULL AUTO_INCREMENT,
+  role_code   VARCHAR(30)  NOT NULL,
+  role_name   VARCHAR(50)  NOT NULL,
+  description VARCHAR(200) NULL,
+  sort_no     INT          NOT NULL DEFAULT 0,
+  created_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_role_code (role_code)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE permission (
+  id              BIGINT       NOT NULL AUTO_INCREMENT,
+  permission_code VARCHAR(80)  NOT NULL,
+  permission_name VARCHAR(80)  NOT NULL,
+  module          VARCHAR(30)  NOT NULL,
+  perm_type       ENUM('MENU','BUTTON','API') NOT NULL DEFAULT 'MENU',
+  sort_no         INT          NOT NULL DEFAULT 0,
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_permission_code (permission_code)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE role_permission (
+  role_id       BIGINT NOT NULL,
+  permission_id BIGINT NOT NULL,
+  PRIMARY KEY (role_id, permission_id),
+  CONSTRAINT fk_rp_role FOREIGN KEY (role_id) REFERENCES role (id) ON DELETE CASCADE,
+  CONSTRAINT fk_rp_perm FOREIGN KEY (permission_id) REFERENCES permission (id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE dict_data (
+  id        BIGINT       NOT NULL AUTO_INCREMENT,
+  dict_type VARCHAR(50)  NOT NULL,
+  dict_key  VARCHAR(50)  NOT NULL,
+  dict_label VARCHAR(100) NOT NULL,
+  sort_no   INT          NOT NULL DEFAULT 0,
+  status    ENUM('ACTIVE','DISABLED') NOT NULL DEFAULT 'ACTIVE',
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_dict (dict_type, dict_key)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ── 主数据：客户 / 伙伴 / 港站 / 线路 / 货物 / 箱型 / 价格 ─────────────────
+CREATE TABLE customer (
+  id            BIGINT       NOT NULL AUTO_INCREMENT,
+  customer_no   VARCHAR(20)  NOT NULL,
+  name          VARCHAR(100) NOT NULL,
+  short_name    VARCHAR(50)  NOT NULL,
+  credit_code   CHAR(18)     NOT NULL,
+  contact_name  VARCHAR(50)  NOT NULL,
+  contact_phone VARCHAR(30)  NOT NULL,
+  email         VARCHAR(100) NULL,
+  region_code   CHAR(6)      NOT NULL,
+  address       VARCHAR(200) NOT NULL,
+  industry      VARCHAR(50)  NOT NULL,
+  credit_level  ENUM('AAA','AA','A','B','C') NOT NULL DEFAULT 'A',
+  status        ENUM('ACTIVE','DISABLED') NOT NULL DEFAULT 'ACTIVE',
+  remark        VARCHAR(255) NULL,
+  created_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_customer_no (customer_no),
+  UNIQUE KEY uk_customer_credit (credit_code)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE partner (
+  id                 BIGINT       NOT NULL AUTO_INCREMENT,
+  partner_no         VARCHAR(20)  NOT NULL,
+  name               VARCHAR(100) NOT NULL,
+  short_name         VARCHAR(50)  NOT NULL,
+  type               ENUM('ROAD_CARRIER','RAIL_OPERATOR','SEA_CARRIER','PORT','RAIL_STATION','DEPOT','WAREHOUSE','FORWARDER','FINANCE','INSURANCE','REGULATOR') NOT NULL,
+  credit_code        CHAR(18)     NOT NULL,
+  contact_name       VARCHAR(50)  NOT NULL,
+  contact_phone      VARCHAR(30)  NOT NULL,
+  email              VARCHAR(100) NULL,
+  region_code        CHAR(6)      NOT NULL,
+  address            VARCHAR(200) NOT NULL,
+  qualifications     JSON         NULL,
+  rating             DECIMAL(3,2) NOT NULL DEFAULT 4.50,
+  settlement_account VARCHAR(50)  NULL,
+  status             ENUM('ACTIVE','DISABLED') NOT NULL DEFAULT 'ACTIVE',
+  remark             VARCHAR(255) NULL,
+  created_at         DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at         DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_partner_no (partner_no),
+  UNIQUE KEY uk_partner_credit (credit_code),
+  KEY idx_partner_type (type)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE port_station (
+  id                  BIGINT       NOT NULL AUTO_INCREMENT,
+  node_code           VARCHAR(20)  NOT NULL,
+  node_name           VARCHAR(100) NOT NULL,
+  node_type           ENUM('PORT','RAIL_STATION','DEPOT','WAREHOUSE') NOT NULL,
+  region_code         CHAR(6)      NOT NULL,
+  address             VARCHAR(200) NOT NULL,
+  lng                 DECIMAL(9,6) NOT NULL,
+  lat                 DECIMAL(9,6) NOT NULL,
+  operator_partner_id BIGINT       NULL,
+  capacity_teu        INT          NULL,
+  operating_hours     VARCHAR(50)  NULL,
+  status              ENUM('ACTIVE','DISABLED') NOT NULL DEFAULT 'ACTIVE',
+  created_at          DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_node_code (node_code),
+  KEY idx_node_type (node_type),
+  CONSTRAINT fk_node_operator FOREIGN KEY (operator_partner_id) REFERENCES partner (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE route_template (
+  id                  BIGINT        NOT NULL AUTO_INCREMENT,
+  route_code          VARCHAR(20)   NOT NULL,
+  route_name          VARCHAR(100)  NOT NULL,
+  origin_node_id      BIGINT        NOT NULL,
+  destination_node_id BIGINT        NOT NULL,
+  transit_node_ids    JSON          NOT NULL,
+  modes               JSON          NOT NULL,
+  distance_km         INT           NOT NULL,
+  transit_days        DECIMAL(4,1)  NOT NULL,
+  base_cost           DECIMAL(12,2) NOT NULL,
+  reliability         DECIMAL(5,2)  NOT NULL DEFAULT 95.00,
+  status              ENUM('ACTIVE','DISABLED') NOT NULL DEFAULT 'ACTIVE',
+  remark              VARCHAR(255)  NULL,
+  created_at          DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_route_code (route_code),
+  CONSTRAINT fk_route_origin FOREIGN KEY (origin_node_id) REFERENCES port_station (id),
+  CONSTRAINT fk_route_dest FOREIGN KEY (destination_node_id) REFERENCES port_station (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE goods_catalog (
+  id             BIGINT        NOT NULL AUTO_INCREMENT,
+  goods_code     VARCHAR(20)   NOT NULL,
+  goods_name     VARCHAR(100)  NOT NULL,
+  category       VARCHAR(50)   NOT NULL,
+  hs_code        VARCHAR(20)   NULL,
+  dangerous_flag TINYINT(1)    NOT NULL DEFAULT 0,
+  packaging      VARCHAR(50)   NULL,
+  unit           VARCHAR(20)   NOT NULL DEFAULT '箱',
+  default_weight DECIMAL(10,2) NULL,
+  status         ENUM('ACTIVE','DISABLED') NOT NULL DEFAULT 'ACTIVE',
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_goods_code (goods_code)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE container_type (
+  id               BIGINT       NOT NULL AUTO_INCREMENT,
+  code             VARCHAR(10)  NOT NULL,
+  name             VARCHAR(50)  NOT NULL,
+  inner_volume_cbm DECIMAL(6,2) NOT NULL,
+  max_payload_t    DECIMAL(6,2) NOT NULL,
+  tare_weight_t    DECIMAL(6,2) NOT NULL,
+  teu              DECIMAL(3,1) NOT NULL,
+  status           ENUM('ACTIVE','DISABLED') NOT NULL DEFAULT 'ACTIVE',
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_ct_code (code)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE price_rule (
+  id                 BIGINT        NOT NULL AUTO_INCREMENT,
+  rule_no            VARCHAR(20)   NOT NULL,
+  rule_name          VARCHAR(120)  NOT NULL,
+  mode               ENUM('ROAD','SEA','RAIL','PORT','OTHER') NOT NULL,
+  charge_type        ENUM('BASE','SURCHARGE') NOT NULL DEFAULT 'BASE',
+  carrier_partner_id BIGINT        NULL,
+  route_template_id  BIGINT        NULL,
+  origin_node_id     BIGINT        NULL,
+  destination_node_id BIGINT       NULL,
+  container_type_id  BIGINT        NULL,
+  customer_id        BIGINT        NULL,
+  contract_id        BIGINT        NULL,
+  calc_method        ENUM('PER_CONTAINER','PER_KM','PER_TON','PER_TEU','FLAT') NOT NULL,
+  unit_price         DECIMAL(12,2) NOT NULL,
+  unit               VARCHAR(20)   NOT NULL DEFAULT '元',
+  min_charge         DECIMAL(12,2) NOT NULL DEFAULT 0,
+  ladder             JSON          NULL,
+  currency           CHAR(3)       NOT NULL DEFAULT 'CNY',
+  priority           INT           NOT NULL DEFAULT 100,
+  effective_from     DATE          NOT NULL,
+  effective_to       DATE          NOT NULL,
+  status             ENUM('ACTIVE','DISABLED') NOT NULL DEFAULT 'ACTIVE',
+  remark             VARCHAR(255)  NULL,
+  created_at         DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at         DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_rule_no (rule_no),
+  KEY idx_rule_mode (mode),
+  KEY idx_rule_route (route_template_id),
+  CONSTRAINT fk_rule_carrier FOREIGN KEY (carrier_partner_id) REFERENCES partner (id),
+  CONSTRAINT fk_rule_route FOREIGN KEY (route_template_id) REFERENCES route_template (id),
+  CONSTRAINT fk_rule_container_type FOREIGN KEY (container_type_id) REFERENCES container_type (id),
+  CONSTRAINT fk_rule_customer FOREIGN KEY (customer_id) REFERENCES customer (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ── 账号与合同 ─────────────────────────────────────────────────────────────
 CREATE TABLE user (
   id            BIGINT       NOT NULL AUTO_INCREMENT,
   username      VARCHAR(50)  NOT NULL,
   password_hash VARCHAR(100) NOT NULL,
   display_name  VARCHAR(50)  NOT NULL,
-  role          ENUM('SHIPPER','MTO','CARRIER','TERMINAL','SETTLEMENT') NOT NULL,
+  role          ENUM('SHIPPER','FORWARDER','MTO','CARRIER','RAIL_CARRIER','SEA_CARRIER','TERMINAL','SETTLEMENT','ADMIN') NOT NULL,
+  customer_id   BIGINT       NULL,
+  partner_id    BIGINT       NULL,
+  phone         VARCHAR(30)  NULL,
+  email         VARCHAR(100) NULL,
+  status        ENUM('ACTIVE','DISABLED') NOT NULL DEFAULT 'ACTIVE',
+  last_login_at DATETIME     NULL,
   created_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
-  UNIQUE KEY uk_user_username (username)
+  UNIQUE KEY uk_user_username (username),
+  KEY idx_user_role (role),
+  CONSTRAINT fk_user_customer FOREIGN KEY (customer_id) REFERENCES customer (id),
+  CONSTRAINT fk_user_partner FOREIGN KEY (partner_id) REFERENCES partner (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-CREATE TABLE orders (
+CREATE TABLE contract (
+  id              BIGINT        NOT NULL AUTO_INCREMENT,
+  contract_no     VARCHAR(20)   NOT NULL,
+  customer_id     BIGINT        NOT NULL,
+  contract_type   ENUM('FRAMEWORK','SPOT') NOT NULL DEFAULT 'FRAMEWORK',
+  title           VARCHAR(120)  NOT NULL,
+  effective_from  DATE          NOT NULL,
+  effective_to    DATE          NOT NULL,
+  payment_terms   VARCHAR(50)   NOT NULL,
+  credit_limit    DECIMAL(14,2) NOT NULL DEFAULT 0,
+  discount_rate   DECIMAL(5,2)  NOT NULL DEFAULT 0,
+  settle_currency CHAR(3)       NOT NULL DEFAULT 'CNY',
+  status          ENUM('DRAFT','PENDING_SIGN','SIGNED','TERMINATED') NOT NULL DEFAULT 'DRAFT',
+  signer_name     VARCHAR(50)   NULL,
+  signed_at       DATETIME      NULL,
+  sign_hash       CHAR(64)      NULL,
+  file_url        VARCHAR(255)  NULL,
+  created_by      BIGINT        NULL,
+  created_at      DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at      DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_contract_no (contract_no),
+  KEY idx_contract_customer (customer_id),
+  CONSTRAINT fk_contract_customer FOREIGN KEY (customer_id) REFERENCES customer (id),
+  CONSTRAINT fk_contract_creator FOREIGN KEY (created_by) REFERENCES user (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ── 报价 ───────────────────────────────────────────────────────────────────
+CREATE TABLE quote (
   id                  BIGINT        NOT NULL AUTO_INCREMENT,
-  order_no            VARCHAR(32)   NOT NULL,
-  shipper_id          BIGINT        NOT NULL,
-  status              ENUM('CREATED','DISPATCHED','IN_TRANSIT','ARRIVED','SIGNED','BILLED') NOT NULL DEFAULT 'CREATED',
+  quote_no            VARCHAR(20)   NOT NULL,
+  customer_id         BIGINT        NOT NULL,
+  order_type          ENUM('ROAD_RAIL','RAIL_SEA','ROAD_RAIL_SEA') NOT NULL,
+  route_template_id   BIGINT        NOT NULL,
+  origin_node_id      BIGINT        NOT NULL,
+  destination_node_id BIGINT        NOT NULL,
+  container_type_id   BIGINT        NOT NULL,
+  container_count     INT           NOT NULL,
+  goods_code          VARCHAR(20)   NULL,
   cargo_name          VARCHAR(100)  NOT NULL,
   cargo_weight        DECIMAL(12,2) NOT NULL,
-  container_type      VARCHAR(20)   NOT NULL,
-  container_count     INT           NOT NULL,
-  origin              VARCHAR(100)  NOT NULL,
-  destination         VARCHAR(100)  NOT NULL,
-  required_pickup_date DATE         NOT NULL,
+  required_date       DATE          NOT NULL,
+  transit_days        DECIMAL(4,1)  NOT NULL,
+  valid_until         DATE          NOT NULL,
+  total_amount        DECIMAL(12,2) NOT NULL DEFAULT 0,
+  cost_amount         DECIMAL(12,2) NOT NULL DEFAULT 0,
+  currency            CHAR(3)       NOT NULL DEFAULT 'CNY',
+  status              ENUM('DRAFT','SENT','ACCEPTED','EXPIRED','CANCELLED') NOT NULL DEFAULT 'DRAFT',
+  created_by          BIGINT        NOT NULL,
+  sent_at             DATETIME      NULL,
+  accepted_at         DATETIME      NULL,
+  order_id            BIGINT        NULL,
   remark              VARCHAR(255)  NULL,
   created_at          DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at          DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
+  UNIQUE KEY uk_quote_no (quote_no),
+  KEY idx_quote_customer (customer_id),
+  KEY idx_quote_status (status),
+  CONSTRAINT fk_quote_customer FOREIGN KEY (customer_id) REFERENCES customer (id),
+  CONSTRAINT fk_quote_route FOREIGN KEY (route_template_id) REFERENCES route_template (id),
+  CONSTRAINT fk_quote_ct FOREIGN KEY (container_type_id) REFERENCES container_type (id),
+  CONSTRAINT fk_quote_creator FOREIGN KEY (created_by) REFERENCES user (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE quote_item (
+  id                 BIGINT        NOT NULL AUTO_INCREMENT,
+  quote_id           BIGINT        NOT NULL,
+  seq                INT           NOT NULL,
+  mode               ENUM('ROAD','SEA','RAIL','PORT') NOT NULL,
+  charge_type        ENUM('BASE','SURCHARGE') NOT NULL DEFAULT 'BASE',
+  description        VARCHAR(120)  NOT NULL,
+  carrier_partner_id BIGINT        NULL,
+  quantity           DECIMAL(12,2) NOT NULL,
+  unit               VARCHAR(20)   NOT NULL,
+  unit_price         DECIMAL(12,2) NOT NULL,
+  amount             DECIMAL(12,2) NOT NULL,
+  cost_amount        DECIMAL(12,2) NOT NULL DEFAULT 0,
+  calculation        JSON          NULL,
+  PRIMARY KEY (id),
+  KEY idx_quote_item_quote (quote_id),
+  CONSTRAINT fk_quote_item_quote FOREIGN KEY (quote_id) REFERENCES quote (id) ON DELETE CASCADE,
+  CONSTRAINT fk_quote_item_carrier FOREIGN KEY (carrier_partner_id) REFERENCES partner (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ── 订单（v0 字段 + v1 扩展） ───────────────────────────────────────────────
+CREATE TABLE orders (
+  id                       BIGINT        NOT NULL AUTO_INCREMENT,
+  order_no                 VARCHAR(32)   NOT NULL,
+  shipper_id               BIGINT        NOT NULL,
+  status                   ENUM('CREATED','CONTRACTED','CONFIRMED','DISPATCHED','IN_TRANSIT','ARRIVED','SIGNED','BILLED','CANCELLED') NOT NULL DEFAULT 'CREATED',
+  cargo_name               VARCHAR(100)  NOT NULL,
+  cargo_weight             DECIMAL(12,2) NOT NULL,
+  container_type           VARCHAR(20)   NOT NULL,
+  container_count          INT           NOT NULL,
+  origin                   VARCHAR(100)  NOT NULL,
+  destination              VARCHAR(100)  NOT NULL,
+  required_pickup_date     DATE          NOT NULL,
+  remark                   VARCHAR(255)  NULL,
+  order_type               ENUM('ROAD_RAIL','RAIL_SEA','ROAD_RAIL_SEA') NOT NULL DEFAULT 'ROAD_RAIL_SEA',
+  customer_id              BIGINT        NULL,
+  consignee_customer_id    BIGINT        NULL,
+  notify_customer_id       BIGINT        NULL,
+  contract_id              BIGINT        NULL,
+  quote_id                 BIGINT        NULL,
+  route_template_id        BIGINT        NULL,
+  priority                 ENUM('NORMAL','URGENT') NOT NULL DEFAULT 'NORMAL',
+  source                   ENUM('QUICK','QUOTE') NOT NULL DEFAULT 'QUICK',
+  total_amount             DECIMAL(12,2) NOT NULL DEFAULT 0,
+  currency                 CHAR(3)       NOT NULL DEFAULT 'CNY',
+  created_at               DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at               DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
   UNIQUE KEY uk_orders_no (order_no),
   KEY idx_orders_shipper (shipper_id),
   KEY idx_orders_status (status),
-  CONSTRAINT fk_orders_shipper FOREIGN KEY (shipper_id) REFERENCES user (id)
+  KEY idx_orders_customer (customer_id),
+  CONSTRAINT fk_orders_shipper FOREIGN KEY (shipper_id) REFERENCES user (id),
+  CONSTRAINT fk_orders_customer FOREIGN KEY (customer_id) REFERENCES customer (id),
+  CONSTRAINT fk_orders_consignee FOREIGN KEY (consignee_customer_id) REFERENCES customer (id),
+  CONSTRAINT fk_orders_notify FOREIGN KEY (notify_customer_id) REFERENCES customer (id),
+  CONSTRAINT fk_orders_contract FOREIGN KEY (contract_id) REFERENCES contract (id),
+  CONSTRAINT fk_orders_quote FOREIGN KEY (quote_id) REFERENCES quote (id),
+  CONSTRAINT fk_orders_route FOREIGN KEY (route_template_id) REFERENCES route_template (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+CREATE TABLE order_cargo (
+  id                BIGINT        NOT NULL AUTO_INCREMENT,
+  order_id          BIGINT        NOT NULL,
+  seq               INT           NOT NULL,
+  goods_code        VARCHAR(20)   NULL,
+  goods_name        VARCHAR(100)  NOT NULL,
+  quantity          DECIMAL(12,2) NOT NULL,
+  unit              VARCHAR(20)   NOT NULL,
+  weight_t          DECIMAL(12,2) NOT NULL,
+  volume_cbm        DECIMAL(12,2) NULL,
+  container_type_id BIGINT        NULL,
+  container_count   INT           NOT NULL DEFAULT 0,
+  dangerous_flag    TINYINT(1)    NOT NULL DEFAULT 0,
+  packaging         VARCHAR(50)   NULL,
+  remark            VARCHAR(255)  NULL,
+  PRIMARY KEY (id),
+  KEY idx_order_cargo_order (order_id),
+  CONSTRAINT fk_order_cargo_order FOREIGN KEY (order_id) REFERENCES orders (id) ON DELETE CASCADE,
+  CONSTRAINT fk_order_cargo_ct FOREIGN KEY (container_type_id) REFERENCES container_type (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ── v0 履约表（结构保持） ───────────────────────────────────────────────────
 CREATE TABLE container (
   id             BIGINT       NOT NULL AUTO_INCREMENT,
   order_id       BIGINT       NOT NULL,
@@ -135,4 +487,76 @@ CREATE TABLE bill (
   KEY idx_bill_waybill (waybill_id),
   CONSTRAINT fk_bill_order FOREIGN KEY (order_id) REFERENCES orders (id),
   CONSTRAINT fk_bill_waybill FOREIGN KEY (waybill_id) REFERENCES waybill (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ── 平台治理：审计 / 集成 / 通知 / 事件发件箱 ──────────────────────────────
+CREATE TABLE audit_log (
+  id          BIGINT       NOT NULL AUTO_INCREMENT,
+  user_id     BIGINT       NULL,
+  username    VARCHAR(50)  NULL,
+  role        VARCHAR(30)  NULL,
+  action      VARCHAR(50)  NOT NULL,
+  action_label VARCHAR(50) NOT NULL,
+  module      VARCHAR(30)  NOT NULL,
+  target_type VARCHAR(30)  NULL,
+  target_id   VARCHAR(50)  NULL,
+  detail      JSON         NULL,
+  ip          VARCHAR(45)  NULL,
+  created_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  KEY idx_audit_module_time (module, created_at),
+  KEY idx_audit_user (user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE integration_message (
+  id               BIGINT       NOT NULL AUTO_INCREMENT,
+  msg_no           VARCHAR(30)  NOT NULL,
+  system_code      VARCHAR(30)  NOT NULL,
+  system_name      VARCHAR(50)  NOT NULL,
+  direction        ENUM('IN','OUT') NOT NULL,
+  msg_type         VARCHAR(50)  NOT NULL,
+  standard         VARCHAR(50)  NOT NULL,
+  related_type     VARCHAR(30)  NULL,
+  related_id       VARCHAR(50)  NULL,
+  payload          JSON         NULL,
+  status           ENUM('PENDING','SUCCESS','FAILED','RETRYING') NOT NULL DEFAULT 'PENDING',
+  retry_count      INT          NOT NULL DEFAULT 0,
+  response_payload JSON         NULL,
+  error_message    VARCHAR(255) NULL,
+  created_at       DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  processed_at     DATETIME     NULL,
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_msg_no (msg_no),
+  KEY idx_msg_system (system_code),
+  KEY idx_msg_status (status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE notification (
+  id           BIGINT       NOT NULL AUTO_INCREMENT,
+  user_id      BIGINT       NULL,
+  role         VARCHAR(30)  NULL,
+  type         ENUM('TODO','ALERT','INFO') NOT NULL DEFAULT 'INFO',
+  title        VARCHAR(120) NOT NULL,
+  content      VARCHAR(500) NOT NULL,
+  related_type VARCHAR(30)  NULL,
+  related_id   VARCHAR(50)  NULL,
+  read_flag    TINYINT(1)   NOT NULL DEFAULT 0,
+  created_at   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  KEY idx_notify_user (user_id),
+  CONSTRAINT fk_notify_user FOREIGN KEY (user_id) REFERENCES user (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE event_outbox (
+  id             BIGINT       NOT NULL AUTO_INCREMENT,
+  event_type     VARCHAR(50)  NOT NULL,
+  aggregate_type VARCHAR(30)  NOT NULL,
+  aggregate_id   VARCHAR(50)  NOT NULL,
+  payload        JSON         NULL,
+  status         ENUM('PENDING','PUBLISHED','FAILED') NOT NULL DEFAULT 'PENDING',
+  retry_count    INT          NOT NULL DEFAULT 0,
+  created_at     DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  published_at   DATETIME     NULL,
+  PRIMARY KEY (id),
+  KEY idx_outbox_status (status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

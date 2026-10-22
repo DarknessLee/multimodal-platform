@@ -10,20 +10,36 @@ import type {
   SegmentActionData,
   SignResult,
   TrackData,
+  UserInfo,
 } from '../types';
 
-/** 1. 登录 */
+export interface OrderListParams {
+  status?: string;
+  keyword?: string;
+  orderType?: string;
+  source?: string;
+  customerId?: number | string;
+  page?: number;
+  pageSize?: number;
+}
+
+/** 1. 登录（v1 额外返回 permissions/menus，v0 兼容） */
 export function login(username: string, password: string): Promise<LoginResult> {
   return request<LoginResult>({ url: '/auth/login', method: 'POST', data: { username, password } });
 }
 
-/** 2. 货主下单 */
+/** v1：当前登录用户与权限集 */
+export function fetchMe(): Promise<UserInfo & { permissions: string[] }> {
+  return request<UserInfo & { permissions: string[] }>({ url: '/auth/me', method: 'GET' });
+}
+
+/** 2. 货主下单（v0 快速单 / v1 报价转单 + 多货物行） */
 export function createOrder(payload: CreateOrderPayload): Promise<OrderDetail> {
   return request<OrderDetail>({ url: '/orders', method: 'POST', data: payload });
 }
 
-/** 3. 订单列表（按角色过滤） */
-export function fetchOrders(params?: { status?: string; keyword?: string }): Promise<OrderListItem[]> {
+/** 3. 订单列表（按角色过滤；v1 支持 orderType/source/customerId） */
+export function fetchOrders(params?: OrderListParams): Promise<OrderListItem[]> {
   return request<OrderListItem[]>({ url: '/orders', method: 'GET', params });
 }
 
@@ -32,12 +48,21 @@ export function fetchOrderDetail(orderId: number | string): Promise<OrderDetail>
   return request<OrderDetail>({ url: `/orders/${orderId}`, method: 'GET' });
 }
 
-/** 5. MTO 调度 */
+/** 5. MTO 调度（v1 兼容 CREATED/CONTRACTED/CONFIRMED） */
 export function dispatchOrder(orderId: number | string, roadCarrierCode: string): Promise<DispatchResult> {
   return request<DispatchResult>({
     url: `/orders/${orderId}/dispatch`,
     method: 'POST',
     data: { roadCarrierCode },
+  });
+}
+
+/** 5.1 取消订单（未调度） */
+export function cancelOrder(orderId: number | string, reason?: string): Promise<{ id: number; status: string; statusLabel: string }> {
+  return request<{ id: number; status: string; statusLabel: string }>({
+    url: `/orders/${orderId}/cancel`,
+    method: 'POST',
+    data: reason ? { reason } : {},
   });
 }
 

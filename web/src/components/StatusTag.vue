@@ -9,12 +9,26 @@ import { computed } from 'vue';
 import {
   billStatusLabel,
   containerStatusLabel,
+  contractStatusLabel,
+  integrationStatusLabel,
   orderStatusLabel,
+  partnerTypeLabel,
+  quoteStatusLabel,
   segmentStatusLabel,
   waybillStatusLabel,
 } from '../utils/constants';
 
-type StatusKind = 'order' | 'waybill' | 'segment' | 'bill' | 'container';
+type StatusKind =
+  | 'order'
+  | 'waybill'
+  | 'segment'
+  | 'bill'
+  | 'container'
+  | 'quote'
+  | 'contract'
+  | 'integration'
+  | 'partner'
+  | 'customer';
 type TagType = 'primary' | 'success' | 'info' | 'warning' | 'danger';
 
 const props = withDefaults(
@@ -46,6 +60,14 @@ const displayLabel = computed<string>(() => {
       return billStatusLabel(status);
     case 'container':
       return containerStatusLabel(status);
+    case 'quote':
+      return quoteStatusLabel(status);
+    case 'contract':
+      return contractStatusLabel(status);
+    case 'integration':
+      return integrationStatusLabel(status);
+    case 'partner':
+      return partnerTypeLabel(status);
     default:
       return orderStatusLabel(status);
   }
@@ -53,10 +75,21 @@ const displayLabel = computed<string>(() => {
 
 const tagType = computed<TagType>(() => {
   const status = props.status ?? '';
-  if (['SIGNED', 'BILLED', 'COMPLETED', 'DELIVERED', 'PAID'].includes(status)) return 'success';
-  if (['ARRIVED'].includes(status)) return 'warning';
-  if (['CREATED', 'PENDING'].includes(status)) return 'info';
-  if (['DISPATCHED', 'ACCEPTED', 'IN_TRANSIT', 'GATE_IN', 'LOADED'].includes(status)) return 'primary';
+  if (['SIGNED', 'BILLED', 'COMPLETED', 'DELIVERED', 'PAID', 'ACCEPTED', 'SUCCESS', 'ACTIVE', 'UP', 'SIGNED'].includes(status)) {
+    return 'success';
+  }
+  if (['ARRIVED', 'PENDING_SIGN', 'URGENT', 'EXPIRED', 'DEGRADED', 'RETRYING'].includes(status)) {
+    return 'warning';
+  }
+  if (['FAILED', 'TERMINATED', 'EXCEPTION'].includes(status)) {
+    return 'danger';
+  }
+  if (['CREATED', 'PENDING', 'DRAFT', 'CANCELLED', 'DISABLED', 'DOWN'].includes(status)) {
+    return 'info';
+  }
+  if (['DISPATCHED', 'IN_TRANSIT', 'GATE_IN', 'LOADED', 'SENT', 'CONTRACTED', 'CONFIRMED'].includes(status)) {
+    return 'primary';
+  }
   return 'info';
 });
 </script>

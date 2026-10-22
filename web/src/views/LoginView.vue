@@ -3,10 +3,10 @@
     <div class="login-panel">
       <section class="login-brand">
         <div class="login-brand__logo">联</div>
-        <h1 class="login-brand__title">多式联运演示版 v0</h1>
-        <p class="login-brand__subtitle">公路 · 海运 · 铁路一站式联运平台（多角色协同演示）</p>
+        <h1 class="login-brand__title">多式联运供应链平台</h1>
+        <p class="login-brand__subtitle">Stage 1 · 询价 → 报价 → 合同 → 下单 → 调度 → 履约 → 签收 → 账单</p>
 
-        <div class="demo-title">演示账号（密码统一为 demo123，点击即可一键登录）</div>
+        <div class="demo-title">演示账号（密码统一 demo123，点击一键登录）</div>
         <div class="demo-list">
           <button
             v-for="account in demoAccounts"
@@ -28,7 +28,7 @@
       <section class="login-form-wrap">
         <div class="login-form-card">
           <h2 class="login-form__title">账号登录</h2>
-          <p class="login-form__subtitle">使用演示账号登录，体验对应角色工作台</p>
+          <p class="login-form__subtitle">登录后按角色权限加载菜单与操作按钮</p>
 
           <el-form ref="formRef" :model="form" :rules="rules" label-position="top" @submit.prevent>
             <el-form-item label="账号" prop="username">
@@ -76,7 +76,7 @@
 
           <div class="login-hint">
             <div>提示：先运行 <span class="mono">npm run setup</span> 与 <span class="mono">npm run dev</span>。</div>
-            <div>若接口未启动，页面会给出网络错误提示。</div>
+            <div>接口未启动或暂未实现时，页面会给出友好错误提示。</div>
           </div>
         </div>
       </section>
@@ -118,7 +118,9 @@ async function doLogin(username: string, password: string): Promise<void> {
     const result = await login(username, password);
     auth.setSession(result);
     ElMessage.success(`欢迎，${result.user.displayName}`);
-    const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : '/orders';
+    const redirect = typeof route.query.redirect === 'string' && route.query.redirect.startsWith('/')
+      ? route.query.redirect
+      : '/dashboard';
     await router.replace(redirect);
   } catch (error) {
     errorText.value = error instanceof Error && error.message ? error.message : '登录失败，请检查账号与密码';
@@ -152,7 +154,7 @@ async function quickLogin(account: DemoAccount): Promise<void> {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 32px 24px;
+  padding: 28px 24px;
   background:
     radial-gradient(circle at 12% 18%, rgba(64, 158, 255, 0.12), transparent 42%),
     radial-gradient(circle at 88% 82%, rgba(54, 207, 201, 0.14), transparent 46%),
@@ -161,7 +163,7 @@ async function quickLogin(account: DemoAccount): Promise<void> {
 
 .login-panel {
   width: 100%;
-  max-width: 1080px;
+  max-width: 1120px;
   display: grid;
   grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
   gap: 28px;
@@ -170,41 +172,43 @@ async function quickLogin(account: DemoAccount): Promise<void> {
 .login-brand {
   background: linear-gradient(150deg, #1f4e8c 0%, #2563a8 48%, #1f8f8b 100%);
   border-radius: 14px;
-  padding: 34px 32px;
+  padding: 28px 30px;
   color: #ffffff;
   box-shadow: 0 18px 40px rgba(31, 78, 140, 0.18);
   display: flex;
   flex-direction: column;
+  min-height: 0;
 }
 
 .login-brand__logo {
-  width: 46px;
-  height: 46px;
+  width: 44px;
+  height: 44px;
   border-radius: 12px;
   background: rgba(255, 255, 255, 0.18);
   border: 1px solid rgba(255, 255, 255, 0.3);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 24px;
+  font-size: 23px;
   font-weight: 700;
 }
 
 .login-brand__title {
-  margin: 18px 0 8px;
-  font-size: 26px;
+  margin: 14px 0 8px;
+  font-size: 25px;
   letter-spacing: 1px;
 }
 
 .login-brand__subtitle {
   margin: 0;
-  font-size: 13px;
+  font-size: 12.5px;
   color: rgba(255, 255, 255, 0.78);
+  line-height: 1.6;
 }
 
 .demo-title {
-  margin: 26px 0 12px;
-  font-size: 13px;
+  margin: 20px 0 10px;
+  font-size: 12.5px;
   color: rgba(255, 255, 255, 0.72);
   letter-spacing: 0.5px;
 }
@@ -212,19 +216,22 @@ async function quickLogin(account: DemoAccount): Promise<void> {
 .demo-list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
+  max-height: 52vh;
+  overflow-y: auto;
+  padding-right: 4px;
 }
 
 .demo-item {
   display: grid;
-  grid-template-columns: 74px minmax(0, 1fr) 90px;
+  grid-template-columns: 82px minmax(0, 1fr) 92px;
   grid-template-areas:
     'role name user'
     'role duty duty';
   align-items: center;
-  gap: 2px 10px;
+  gap: 1px 10px;
   text-align: left;
-  padding: 9px 12px;
+  padding: 7px 11px;
   border-radius: 9px;
   border: 1px solid rgba(255, 255, 255, 0.2);
   background: rgba(255, 255, 255, 0.08);
@@ -246,14 +253,14 @@ async function quickLogin(account: DemoAccount): Promise<void> {
 
 .demo-item__role {
   grid-area: role;
-  font-size: 13px;
+  font-size: 12.5px;
   font-weight: 700;
   color: #ffe9a8;
 }
 
 .demo-item__name {
   grid-area: name;
-  font-size: 13px;
+  font-size: 12.5px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -284,7 +291,7 @@ async function quickLogin(account: DemoAccount): Promise<void> {
   width: 100%;
   background: #ffffff;
   border-radius: 14px;
-  padding: 34px 32px 28px;
+  padding: 32px 30px 26px;
   box-shadow: 0 18px 40px rgba(15, 35, 70, 0.08);
   border: 1px solid #ebeef5;
 }
@@ -315,9 +322,13 @@ async function quickLogin(account: DemoAccount): Promise<void> {
   line-height: 1.9;
 }
 
-@media (max-width: 920px) {
+@media (max-width: 960px) {
   .login-panel {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .demo-list {
+    max-height: none;
   }
 }
 </style>

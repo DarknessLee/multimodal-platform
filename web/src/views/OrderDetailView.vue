@@ -9,33 +9,42 @@
         </p>
       </div>
       <div class="page-actions">
-        <el-button @click="goBack">返回列表</el-button>
-        <el-button v-if="canDispatch" type="primary" data-testid="dispatch-entry" @click="goDispatch">
-          人工调度
-        </el-button>
+        <el-button @click="goBack">返回订单中心</el-button>
+        <PermissionGuard permission="order:dispatch">
+          <el-button v-if="canDispatch" type="primary" data-testid="dispatch-entry" @click="goDispatch">
+            人工调度
+          </el-button>
+        </PermissionGuard>
         <el-button v-if="detail?.waybill" data-testid="track-entry" @click="goTrack">运单跟踪</el-button>
         <el-button v-if="canSign" type="success" @click="goTrack">去签收</el-button>
-        <el-button
-          v-if="canSettle"
-          type="warning"
-          data-testid="settle-entry"
-          :loading="settling"
-          @click="handleSettle"
-        >
-          结算出账
-        </el-button>
+        <PermissionGuard permission="bill:settle">
+          <el-button
+            v-if="canSettle"
+            type="warning"
+            data-testid="settle-entry"
+            :loading="settling"
+            @click="handleSettle"
+          >
+            结算出账
+          </el-button>
+        </PermissionGuard>
         <el-button v-if="detail?.bill" data-testid="bill-entry" @click="goBill">查看账单</el-button>
+        <PermissionGuard permission="order:cancel">
+          <el-button
+            v-if="canCancel"
+            type="danger"
+            plain
+            data-testid="order-cancel-btn"
+            :loading="cancelling"
+            @click="handleCancel"
+          >
+            取消订单
+          </el-button>
+        </PermissionGuard>
       </div>
     </div>
 
-    <el-alert
-      v-if="errorText"
-      :title="errorText"
-      type="error"
-      :closable="false"
-      show-icon
-      class="mb-16"
-    >
+    <el-alert v-if="errorText" :title="errorText" type="error" :closable="false" show-icon class="mb-16">
       <template #default>
         <el-button size="small" class="retry-btn" @click="load">重新加载</el-button>
       </template>
@@ -61,12 +70,22 @@
               <el-tag v-else type="info" effect="plain">未生成运单</el-tag>
             </div>
             <div class="overview-meta">
-              <span>货主：{{ detail.order.shipper.displayName }}</span>
+              <span>客户：{{ detail.order.customer?.name || detail.order.shipper.displayName }}</span>
               <span>更新：{{ formatDateTime(detail.order.updatedAt) }}</span>
               <span v-if="detail.bill" class="mono">账单：{{ detail.bill.billNo }}</span>
             </div>
           </div>
-          <el-steps :active="stepActive" finish-status="success" align-center class="steps">
+
+          <el-alert
+            v-if="detail.order.status === 'CANCELLED'"
+            title="该订单已取消"
+            type="warning"
+            show-icon
+            :closable="false"
+            class="mt-12"
+          />
+
+          <el-steps v-else :active="stepActive" finish-status="success" align-center class="steps">
             <el-step v-for="step in ORDER_FLOW_STEPS" :key="step" :title="orderStatusLabel(step)" />
           </el-steps>
         </div>
@@ -79,8 +98,28 @@
               <el-descriptions-item label="订单号">
                 <span class="mono">{{ detail.order.orderNo }}</span>
               </el-descriptions-item>
-              <el-descriptions-item label="订单状态">
-                {{ detail.order.statusLabel }}
+              <el-descriptions-item label="订单状态">{{ detail.order.statusLabel }}</el-descriptions-item>
+              <el-descriptions-item label="订单类型">
+                <span data-testid="order-type">
+                  {{ detail.order.orderTypeLabel || orderTypeLabel(detail.order.orderType) }}
+                </span>
+              </el-descriptions-item>
+              <el-descriptions-item label="订单来源">
+                <span data-testid="order-source">
+                  {{ detail.order.sourceLabel || sourceLabel(detail.order.source) }}
+                </span>
+              </el-descriptions-item>
+              <el-descriptions-item label="客户">
+                {{ detail.order.customer?.name || detail.order.shipper.displayName }}
+              </el-descriptions-item>
+              <el-descriptions-item label="收货人">
+                {{ detail.order.consignee?.name || '—' }}
+              </el-descriptions-item>
+              <el-descriptions-item label="优先级">
+                {{ detail.order.priorityLabel || priorityLabel(detail.order.priority) }}
+              </el-descriptions-item>
+              <el-descriptions-item label="订单金额">
+                <span class="amount">¥{{ formatAmount(detail.order.totalAmount ?? 0) }}</span>
               </el-descriptions-item>
               <el-descriptions-item label="货物名称">{{ detail.order.cargoName }}</el-descriptions-item>
               <el-descriptions-item label="货物重量">
@@ -94,15 +133,9 @@
               </el-descriptions-item>
               <el-descriptions-item label="起运地">{{ detail.order.origin }}</el-descriptions-item>
               <el-descriptions-item label="目的地">{{ detail.order.destination }}</el-descriptions-item>
-              <el-descriptions-item label="备注" :span="2">
-                {{ detail.order.remark || '—' }}
-              </el-descriptions-item>
-              <el-descriptions-item label="创建时间">
-                {{ formatDateTime(detail.order.createdAt) }}
-              </el-descriptions-item>
-              <el-descriptions-item label="更新时间">
-                {{ formatDateTime(detail.order.updatedAt) }}
-              </el-descriptions-item>
+              <el-descriptions-item label="备注" :span="2">{{ detail.order.remark || '—' }}</el-descriptions-item>
+              <el-descriptions-item label="创建时间">{{ formatDateTime(detail.order.createdAt) }}</el-descriptions-item>
+              <el-descriptions-item label="更新时间">{{ formatDateTime(detail.order.updatedAt) }}</el-descriptions-item>
             </el-descriptions>
           </div>
 
@@ -138,29 +171,95 @@
           </div>
         </div>
 
-        <!-- 运单与分段 -->
+        <!-- 货物行（v1） -->
         <div class="card">
           <h3 class="card-title">
-            <span class="card-title-text">运单与分段</span>
+            <span class="card-title-text">货物明细（{{ (detail.cargoLines ?? []).length }} 行）</span>
+            <el-tag v-if="detail.order.orderType" size="small" effect="plain">
+              {{ detail.order.orderTypeLabel || orderTypeLabel(detail.order.orderType) }}
+            </el-tag>
+          </h3>
+          <el-table v-if="(detail.cargoLines ?? []).length" :data="detail.cargoLines" size="small" border stripe>
+            <el-table-column prop="seq" label="行号" width="64" align="center">
+              <template #default="{ row, $index }">{{ row.seq ?? $index + 1 }}</template>
+            </el-table-column>
+            <el-table-column label="货物" min-width="150">
+              <template #default="{ row }">
+                <span>{{ row.goodsName }}</span>
+                <span v-if="row.goodsCode" class="muted mono">（{{ row.goodsCode }}）</span>
+              </template>
+            </el-table-column>
+            <el-table-column label="数量" width="100" align="right">
+              <template #default="{ row }">{{ row.quantity }} {{ row.unit }}</template>
+            </el-table-column>
+            <el-table-column label="重量(t)" width="100" align="right">
+              <template #default="{ row }">{{ Number(row.weightT).toFixed(2) }}</template>
+            </el-table-column>
+            <el-table-column label="体积(m³)" width="100" align="right">
+              <template #default="{ row }">{{ row.volumeCbm ?? '—' }}</template>
+            </el-table-column>
+            <el-table-column label="箱型/箱量" width="120" align="center">
+              <template #default="{ row }">{{ row.containerType }} × {{ row.containerCount }}</template>
+            </el-table-column>
+            <el-table-column label="危险品" width="90" align="center">
+              <template #default="{ row }">
+                <el-tag :type="row.dangerousFlag ? 'danger' : 'info'" size="small" effect="plain">
+                  {{ row.dangerousFlag ? '是' : '否' }}
+                </el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column prop="packaging" label="包装" width="110" />
+          </el-table>
+          <el-empty v-else description="暂无多货物行（旧版单货物订单）" :image-size="60" />
+        </div>
+
+        <!-- 合同 / 报价 / 运单与分段 -->
+        <div class="card">
+          <h3 class="card-title">
+            <span class="card-title-text">合同 / 报价 / 运单</span>
             <span v-if="detail.waybill" class="mono muted">{{ detail.waybill.waybillNo }}</span>
           </h3>
+          <div class="related-bar">
+            <div class="related-item">
+              <span class="meta-label">关联报价</span>
+              <router-link v-if="detail.quote" :to="`/quotes/${detail.quote.id}`" data-testid="order-quote-link" class="mono">
+                {{ detail.quote.quoteNo }}
+              </router-link>
+              <span v-else class="muted">—</span>
+            </div>
+            <div class="related-item">
+              <span class="meta-label">关联合同</span>
+              <router-link v-if="detail.contract" :to="`/contracts/${detail.contract.id}`" data-testid="order-contract-link" class="mono">
+                {{ detail.contract.contractNo }}
+              </router-link>
+              <span v-else class="muted">—</span>
+            </div>
+            <div class="related-item">
+              <span class="meta-label">运输线路</span>
+              <span>{{ detail.route?.routeName || '—' }}</span>
+            </div>
+            <div class="related-item">
+              <span class="meta-label">报价金额</span>
+              <span v-if="detail.quote?.totalAmount !== undefined" class="amount">
+                ¥{{ formatAmount(detail.quote.totalAmount) }}
+              </span>
+              <span v-else class="muted">—</span>
+            </div>
+          </div>
+
           <el-empty
             v-if="!detail.waybill"
             description="尚未调度，MTO 调度后将自动生成运单与 3 个分段"
             :image-size="70"
           />
           <template v-else>
-            <el-descriptions :column="4" border size="small" class="waybill-desc">
+            <el-descriptions :column="4" border size="small" class="waybill-desc mt-12">
               <el-descriptions-item label="运单号">
                 <span class="mono">{{ detail.waybill.waybillNo }}</span>
               </el-descriptions-item>
-              <el-descriptions-item label="运单状态">
-                {{ detail.waybill.statusLabel }}
-              </el-descriptions-item>
+              <el-descriptions-item label="运单状态">{{ detail.waybill.statusLabel }}</el-descriptions-item>
               <el-descriptions-item label="签收人">{{ detail.waybill.signerName || '—' }}</el-descriptions-item>
-              <el-descriptions-item label="签收时间">
-                {{ formatDateTime(detail.waybill.signedAt) }}
-              </el-descriptions-item>
+              <el-descriptions-item label="签收时间">{{ formatDateTime(detail.waybill.signedAt) }}</el-descriptions-item>
             </el-descriptions>
             <div class="mt-16 scroll-x">
               <SegmentTable v-if="detail.segments.length" :segments="detail.segments" />
@@ -172,9 +271,7 @@
         <div class="card">
           <h3 class="card-title">
             <span class="card-title-text">最新轨迹</span>
-            <router-link v-if="detail.waybill" :to="`/waybills/${detail.waybill.id}`">
-              查看全程轨迹 →
-            </router-link>
+            <router-link v-if="detail.waybill" :to="`/waybills/${detail.waybill.id}`">查看全程轨迹 →</router-link>
           </h3>
           <el-timeline v-if="detail.latestTrack.length">
             <el-timeline-item
@@ -223,15 +320,19 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { ElMessage } from 'element-plus';
+import { ElMessage, ElMessageBox } from 'element-plus';
 import StatusTag from '../components/StatusTag.vue';
 import SegmentTable from '../components/SegmentTable.vue';
-import { fetchOrderDetail, settleOrder } from '../api';
+import PermissionGuard from '../components/PermissionGuard.vue';
+import { cancelOrder, fetchOrderDetail, settleOrder } from '../api';
 import { useAuthStore } from '../stores/auth';
 import {
   ORDER_FLOW_STEPS,
   containerStatusLabel,
   orderStatusLabel,
+  orderTypeLabel,
+  priorityLabel,
+  sourceLabel,
   trackSourceLabel,
 } from '../utils/constants';
 import { formatAmount, formatDate, formatDateTime, formatWeight } from '../utils/format';
@@ -244,22 +345,27 @@ const auth = useAuthStore();
 const detail = ref<OrderDetail | null>(null);
 const loading = ref(false);
 const settling = ref(false);
+const cancelling = ref(false);
 const errorText = ref('');
 
 const orderId = computed(() => String(route.params.id ?? ''));
+const canDispatchStatus = computed(() =>
+  ['CREATED', 'CONTRACTED', 'CONFIRMED'].includes(detail.value?.order.status ?? ''),
+);
 
-const canDispatch = computed(
-  () => auth.role === 'MTO' && detail.value?.order.status === 'CREATED',
+const canDispatch = computed(() => auth.hasPermission('order:dispatch') && canDispatchStatus.value);
+const canCancel = computed(
+  () => auth.hasPermission('order:cancel') && canDispatchStatus.value,
 );
 const canSign = computed(
   () =>
-    auth.role === 'SHIPPER' &&
+    auth.hasPermission('waybill:sign') &&
     detail.value?.order.status === 'ARRIVED' &&
     Boolean(detail.value?.waybill),
 );
 const canSettle = computed(
   () =>
-    auth.role === 'SETTLEMENT' &&
+    auth.hasPermission('bill:settle') &&
     detail.value?.order.status === 'SIGNED' &&
     !detail.value?.bill,
 );
@@ -267,6 +373,7 @@ const canSettle = computed(
 const stepActive = computed(() => {
   const status = detail.value?.order.status;
   if (!status) return 0;
+  if (['CREATED', 'CONTRACTED', 'CONFIRMED'].includes(status)) return 0;
   const index = ORDER_FLOW_STEPS.indexOf(status);
   return index < 0 ? 0 : index;
 });
@@ -326,12 +433,42 @@ async function handleSettle(): Promise<void> {
   }
 }
 
+async function handleCancel(): Promise<void> {
+  const order = detail.value?.order;
+  if (!order) return;
+  try {
+    await ElMessageBox.confirm(
+      `确认取消订单 ${order.orderNo}？取消后不可恢复。`,
+      '取消订单',
+      { confirmButtonText: '确认取消', cancelButtonText: '再想想', type: 'warning' },
+    );
+  } catch {
+    return;
+  }
+  cancelling.value = true;
+  try {
+    await cancelOrder(order.id);
+    ElMessage.success('订单已取消');
+    await load();
+  } finally {
+    cancelling.value = false;
+  }
+}
+
 onMounted(load);
 </script>
 
 <style scoped>
 .mb-16 {
   margin-bottom: 16px;
+}
+
+.mt-12 {
+  margin-top: 12px;
+}
+
+.mt-16 {
+  margin-top: 16px;
 }
 
 .retry-btn {
@@ -383,6 +520,23 @@ onMounted(load);
 
 .waybill-desc {
   margin-bottom: 4px;
+}
+
+.related-bar {
+  display: flex;
+  align-items: center;
+  gap: 34px;
+  flex-wrap: wrap;
+  padding: 12px 16px;
+  border-radius: 8px;
+  background: #f7f9fc;
+  font-size: 13px;
+}
+
+.related-item {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
 }
 
 .track-line {
