@@ -4,8 +4,8 @@
       <div class="brand">
         <div class="brand-logo">联</div>
         <div class="brand-text">
-          <div class="brand-name">多式联运平台</div>
-          <div class="brand-version">Stage 5 · 集成/监管/运营与验收</div>
+          <div class="brand-name">多式联运供应链协同平台</div>
+          <div class="brand-version">V1.0 · 全链路协同</div>
         </div>
       </div>
 
@@ -26,7 +26,7 @@
 
       <div class="aside-footer">
         <div class="aside-footer__line">公路 · 海运 · 铁路</div>
-        <div class="aside-footer__line subtle">Mock 全链路演示</div>
+        <div class="aside-footer__line subtle">演示数据 · 全链路闭环</div>
       </div>
     </el-aside>
 
@@ -123,7 +123,7 @@ const menuGroups = computed(() => {
 
 const unreadCount = computed(() => notifications.value.filter((item) => !isRead(item)).length);
 
-const pageTitle = computed(() => (typeof route.meta.title === 'string' ? route.meta.title : '多式联运平台'));
+const pageTitle = computed(() => (typeof route.meta.title === 'string' ? route.meta.title : '多式联运供应链协同平台'));
 
 const activeMenu = computed<string>(() => {
   const fullPath = route.fullPath;

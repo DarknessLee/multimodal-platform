@@ -251,7 +251,7 @@ export async function seedBusiness(conn, ref) {
   };
   const waybills = [];
   const bills = [];
-  let containerSeq = 7000000;
+  let containerSeq = 700000;
 
   for (const order of orders) {
     const waybillState = stateByStatus[order.status];
@@ -406,7 +406,7 @@ export async function seedBusiness(conn, ref) {
     await pushMessage({
       systemCode: 'GPS', systemName: '北斗/GPS 定位', direction: 'IN', msgType: 'GPS_HEARTBEAT', standard: 'MQTT/JSON',
       relatedType: 'WAYBILL', relatedId: waybills[i % waybills.length]?.id ?? 0,
-      payload: { deviceNo: `GPS-${100 + i}`, containerNo: containerNo('MSCU', 7000000 + i), lng: 121.5 - i * 0.2,
+      payload: { deviceNo: `GPS-${100 + i}`, containerNo: containerNo('MSCU', 700000 + i), lng: 121.5 - i * 0.2,
         lat: 31.0 - i * 0.05, speed: 60 + i, reportedAt: dateTimeStr(addDays(today, -i)) },
       createdAt: addDays(today, -i),
     });

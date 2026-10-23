@@ -2,7 +2,7 @@
   "name": "multimodal-demo",
   "version": "1.0.0",
   "private": true,
-  "description": "多式联运供应链平台 Demo（Stage 1 平台基座与受理闭环）",
+  "description": "多式联运供应链协同平台 V1.0（软著演示版）",
   "scripts": {
     "setup": "node scripts/setup.mjs",
     "dev": "node scripts/dev.mjs",

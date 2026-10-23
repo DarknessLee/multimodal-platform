@@ -3,8 +3,8 @@
     <div class="login-panel">
       <section class="login-brand">
         <div class="login-brand__logo">联</div>
-        <h1 class="login-brand__title">多式联运供应链平台</h1>
-        <p class="login-brand__subtitle">Stage 2 · 询价 → 合同 → 一单制运单 → 箱管 → 签收 → 单证存证</p>
+        <h1 class="login-brand__title">多式联运供应链协同平台</h1>
+        <p class="login-brand__subtitle">V1.0 · 一单到底 · 全程可视 · 一次结算</p>
 
         <div class="demo-title">演示账号（密码统一 demo123，点击一键登录）</div>
         <div class="demo-list">

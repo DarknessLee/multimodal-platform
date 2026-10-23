@@ -33,6 +33,18 @@ export function creditCode(regionCode, serial) {
   return `${body}${CREDIT_CHARS[check === 31 ? 0 : check]}`;
 }
 
+export function isValidCreditCode(code) {
+  if (!code || code.length !== 18) return false;
+  let sum = 0;
+  for (let i = 0; i < 17; i += 1) {
+    const index = CREDIT_CHARS.indexOf(code[i]);
+    if (index < 0) return false;
+    sum += index * CREDIT_WEIGHTS[i];
+  }
+  const check = 31 - (sum % 31);
+  return CREDIT_CHARS[check === 31 ? 0 : check] === code[17];
+}
+
 // ── ISO 6346 集装箱号校验位 ────────────────────────────────────────────────
 const LETTER_VALUE = (letter) => {
   let value = letter.charCodeAt(0) - 64;

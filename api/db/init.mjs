@@ -10,6 +10,7 @@ import { seedStage2 } from './seed/stage2.mjs';
 import { seedStage3 } from './seed/stage3.mjs';
 import { seedStage4 } from './seed/stage4.mjs';
 import { seedStage5 } from './seed/stage5.mjs';
+import { isValidContainerNo, isValidCreditCode } from './seed/lib.mjs';
 
 const apiRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 dotenv.config({ path: resolve(apiRoot, '.env') });
@@ -40,6 +41,19 @@ async function main() {
   await seedStage3(conn, ref);
   await seedStage4(conn, ref);
   await seedStage5(conn, ref);
+
+  // 软著/演示数据质量校验：ISO 6346 箱号、GB 32100 统一社会信用代码
+  const [containerRows] = await conn.query('SELECT container_no FROM container');
+  const badContainers = containerRows.filter((row) => !isValidContainerNo(String(row.container_no)));
+  if (badContainers.length > 0) {
+    throw new Error(`存在 ${badContainers.length} 个非法 ISO 6346 箱号：${badContainers.slice(0, 5).map((row) => row.container_no).join(',')}`);
+  }
+  const [invoiceRows] = await conn.query('SELECT invoice_no, buyer_tax_no, seller_tax_no FROM invoice');
+  const badInvoices = invoiceRows.filter((row) => !isValidCreditCode(row.buyer_tax_no) || !isValidCreditCode(row.seller_tax_no));
+  if (badInvoices.length > 0) {
+    throw new Error(`存在 ${badInvoices.length} 张发票税号不符合 GB 32100：${badInvoices.slice(0, 5).map((row) => row.invoice_no).join(',')}`);
+  }
+  console.log(`[db] 数据质量校验：箱号 ${containerRows.length} 个全部符合 ISO 6346；发票 ${invoiceRows.length} 张税号全部符合 GB 32100`);
 
   const [counts] = await conn.query(
     `SELECT

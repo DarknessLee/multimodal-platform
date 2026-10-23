@@ -299,7 +299,7 @@ export async function seedReference(conn) {
         contactName, phone, `contact${i + 1}@example.com`, regionCode, address, industry,
         ['AAA', 'AA', 'AA', 'A', 'AA', 'A', 'AA', 'A', 'A', 'A', 'AA', 'A'][i],
         i === 0 ? '重点客户，月结30天' : null]);
-    customers.push({ id, name, shortName, contactName, phone, regionCode });
+    customers.push({ id, name, shortName, contactName, phone, regionCode, creditCode: creditCode(regionCode, 100000 + i) });
   }
 
   const partners = [];

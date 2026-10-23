@@ -1,6 +1,7 @@
 // Stage 4 业务种子：应收/应付账单与明细、对账、发票、支付核销、保理、保险保单、经营分析日汇总
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { creditCode } from './lib.mjs';
 
 const apiRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const pad = (n, width = 2) => String(n).padStart(width, '0');
@@ -39,7 +40,7 @@ export async function seedStage4(conn, ref) {
     if (!segmentsByWaybill.has(key)) segmentsByWaybill.set(key, []);
     segmentsByWaybill.get(key).push(segment);
   }
-  const platformTaxNo = '91310115600000000X';
+  const platformTaxNo = creditCode('310115', '600000000');
   const period = `${now.getFullYear()}-${pad(now.getMonth() + 1)}`;
 
   function buildItems(segList, totalAmount, taxRate = 9) {
