@@ -167,12 +167,15 @@ async function main() {
   await expectError('POST', '/payments', { token: tokens.settlement01, body: { direction: 'IN', billId: settled.payableBills[0].id ?? settled.payableBills[0].billId, amount: 99999999 } }, 42201, '支付金额超未核销金额返回 42201');
 
   section('5. 保理与保险');
+  const financePartners = await api('GET', '/partners?type=FINANCE&page=1&pageSize=100', { token: tokens.finance01 });
+  assert(financePartners.list.length >= 1, '金融机构应可读取资金方/金融机构列表');
+  ok('金融机构读取资金方列表', `${financePartners.list.length} 家`);
   const otherReceivable = await api('GET', `/bills?billType=RECEIVABLE&status=ISSUED&page=1&pageSize=5`, { token: tokens.settlement01 });
   const factoringBill = otherReceivable.list.find((b) => b.id !== receivable.id);
   assert(factoringBill, '应有可保理的应收账单');
   const factoring = await api('POST', '/factoring/applications', {
     token: tokens.finance01,
-    body: { billId: factoringBill.id, financePartnerId: 22, amount: factoringBill.totalAmount, discountRate: 6.5 },
+    body: { billId: factoringBill.id, financePartnerId: financePartners.list[0].id, amount: factoringBill.totalAmount, discountRate: 6.5 },
   });
   assert(factoring.status === 'SUBMITTED', '保理申请应为 SUBMITTED');
   const approved = await api('POST', `/factoring/applications/${factoring.id}/approve`, { token: tokens.finance01, body: { approved: true } });

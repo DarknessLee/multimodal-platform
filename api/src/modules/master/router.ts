@@ -22,6 +22,7 @@ import {
 
 const readRole = requireRole('SHIPPER', 'FORWARDER', 'MTO', 'ADMIN');
 const masterReadRole = requireRole('MTO', 'ADMIN', 'FORWARDER');
+const partnerReadRole = requireRole('MTO', 'ADMIN', 'FORWARDER', 'FINANCE');
 
 const creditCodeSchema = z
   .string({ required_error: '统一社会信用代码不能为空' })
@@ -78,7 +79,7 @@ export const partnersRouter = express.Router();
 
 partnersRouter.get(
   '/',
-  masterReadRole,
+  partnerReadRole,
   asyncHandler(async (req, res) => {
     res.json(okBody(await listPartners(req.query as Record<string, unknown>)));
   }),
