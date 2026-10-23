@@ -7,7 +7,7 @@
 - **数据**：59 张表、12 角色、全量 Mock 种子，一键重建
 - **启动**：2 条命令（`npm run setup` → `npm run dev`）
 - **外部系统**：95306、港口 EDI、CA、银行、税务、保险、监管、GPS 全部 Mock，但编码/价格/时效/报文结构按真实业务标准生成
-- **验收**：215 项 API 断言、38 阶段 UI E2E、build 零错误、全链路检查 passed=true
+- **验收**：216 项 API 断言、38 阶段 UI E2E、build 零错误、全链路检查 passed=true
 
 ---
 
@@ -227,14 +227,14 @@ npm run dev       # 同时启动 API(8080) + Web(5173)
 
 ```powershell
 npm run build          # 后端 tsc + 前端 vue-tsc/vite build
-npm run accept:all     # v0 + Stage1~5 API 验收：215 项断言
+npm run accept:all     # v0 + Stage1~5 API 验收：216 项断言
 npm run e2e:all        # Stage1~5 UI E2E：38 个阶段
 ```
 
 | 项 | 结果 |
 |---|---|
 | 构建 | ✅ 零错误 |
-| API 断言 | ✅ 215/215（34+53+33+33+31+31） |
+| API 断言 | ✅ 216/216（34+53+34+33+31+31） |
 | UI E2E | ✅ 38 阶段，无页面 JS 异常 |
 | 冷启动 | ✅ 59 表 + 全量种子 |
 | 全链路检查 | ✅ 5 Stage / 22 项，passed=true |

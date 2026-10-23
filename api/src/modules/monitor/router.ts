@@ -15,12 +15,12 @@ router.get(
   }),
 );
 
-/** GET /api/monitor/waybills/:id/live */
+/** GET /api/monitor/waybills/:id/live（监控角色或运单关联方；货主仅可看自己的订单） */
 router.get(
   '/waybills/:id/live',
-  requirePermission('menu:monitor'),
+  requirePermission('menu:monitor', 'menu:track'),
   asyncHandler(async (req, res) => {
-    res.json(okBody(await getWaybillLive(parseId(req.params.id))));
+    res.json(okBody(await getWaybillLive(parseId(req.params.id), req.user)));
   }),
 );
 

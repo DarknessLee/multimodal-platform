@@ -146,6 +146,10 @@ async function main() {
   assert(live.waybill?.id === confirmed.waybillId, '实时接口应返回运单');
   ok('运单实时监控', live.livePosition?.nodeName ?? '—');
 
+  const shipperLive = await api('GET', `/monitor/waybills/${confirmed.waybillId}/live`, { token: tokens.shipper01 });
+  assert(shipperLive.waybill?.id === confirmed.waybillId, '货主应可查看自己订单的运单实时数据');
+  ok('货主运单实时监控（归属校验通过）');
+
   section('5. 预警与异常工单');
   const alerts = await api('GET', '/alerts?page=1&pageSize=50', { token: tokens.mto01 });
   assert(alerts.total >= 20, `预警应 ≥20，实际 ${alerts.total}`);

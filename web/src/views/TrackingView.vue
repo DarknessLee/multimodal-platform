@@ -267,7 +267,7 @@ async function loadLive(): Promise<void> {
     liveError.value = '';
   } catch {
     live.value = null;
-    liveError.value = '实时监控数据暂不可用（Stage 3 接口）';
+    liveError.value = '实时监控数据暂不可用';
   }
 }
 

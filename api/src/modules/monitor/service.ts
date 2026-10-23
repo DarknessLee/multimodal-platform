@@ -10,7 +10,7 @@ import {
 } from '../../config/labels';
 import { queryOne, queryRows } from '../../db/pool';
 import { ApiError } from '../../errors';
-import type { AlertLevel, AlertType, ContainerStatus, OrderStatus, SegmentMode, WaybillStatus } from '../../types';
+import type { AlertLevel, AlertType, AuthUser, ContainerStatus, OrderStatus, SegmentMode, WaybillStatus } from '../../types';
 import { formatDate } from '../../utils/datetime';
 import { round1 } from '../../utils/json';
 
@@ -178,17 +178,36 @@ export async function getMonitorOverview() {
   };
 }
 
-/** GET /api/monitor/waybills/:id/live */
-export async function getWaybillLive(id: number) {
+/** GET /api/monitor/waybills/:id/live（货主仅可看自己订单的实时数据；监控角色可看全量） */
+export async function getWaybillLive(id: number, viewer?: AuthUser) {
   const waybill = await queryOne<{
     id: number;
     waybill_no: string;
     status: WaybillStatus;
     waybill_type: string;
     parent_waybill_id: number | null;
-  }>('SELECT id, waybill_no, status, waybill_type, parent_waybill_id FROM waybill WHERE id = ?', [id]);
+    order_customer_id: number | null;
+    order_shipper_id: number;
+  }>(
+    `SELECT w.id, w.waybill_no, w.status, w.waybill_type, w.parent_waybill_id,
+            o.customer_id AS order_customer_id, o.shipper_id AS order_shipper_id
+       FROM waybill w
+       JOIN orders o ON o.id = w.order_id
+      WHERE w.id = ?`,
+    [id],
+  );
   if (!waybill) {
     throw new ApiError(40401, '运单不存在');
+  }
+  if (viewer?.role === 'SHIPPER') {
+    const ownsByShipper = Number(waybill.order_shipper_id) === Number(viewer.uid);
+    const ownsByCustomer = viewer.customer_id !== null
+      && viewer.customer_id !== undefined
+      && waybill.order_customer_id !== null
+      && Number(viewer.customer_id) === Number(waybill.order_customer_id);
+    if (!ownsByShipper && !ownsByCustomer) {
+      throw new ApiError(40301, '只能查看自己订单的运单实时数据');
+    }
   }
   const masterId =
     waybill.waybill_type === 'SEGMENT' && waybill.parent_waybill_id

@@ -245,6 +245,7 @@ async function main() {
     await loginAs('SHIPPER', '货主 shipper01');
     await page.goto(`${BASE}/waybills/${waybillId}/track`);
     await page.locator('[data-testid="track-chart"] canvas').waitFor({ state: 'visible', timeout: 20000 });
+    await page.locator('[data-testid="live-position"]').waitFor({ state: 'visible', timeout: 20000 });
     const signBtn = page.locator('[data-testid="sign-btn"]');
     await signBtn.waitFor({ state: 'visible', timeout: 20000 });
     await screenshot('11-货主-全程轨迹');
