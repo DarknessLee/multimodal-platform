@@ -25,7 +25,7 @@ const routes: RouteRecordRaw[] = [
         path: 'orders',
         name: 'orders',
         component: () => import('../views/OrdersView.vue'),
-        meta: { title: '订单中心', permission: 'menu:orders' },
+        meta: { title: '订单中心', permissions: ['menu:orders', 'menu:track'] },
       },
       {
         path: 'orders/new',

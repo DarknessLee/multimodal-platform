@@ -229,6 +229,7 @@ npm run dev       # 同时启动 API(8080) + Web(5173)
 npm run build          # 后端 tsc + 前端 vue-tsc/vite build
 npm run accept:all     # v0 + Stage1~5 API 验收：217 项断言
 npm run e2e:all        # Stage1~5 UI E2E：38 个阶段
+npm run audit:accounts # 全账号只读巡检：12 账号可见页面（API/控制台零错误）
 ```
 
 | 项 | 结果 |
@@ -236,6 +237,7 @@ npm run e2e:all        # Stage1~5 UI E2E：38 个阶段
 | 构建 | ✅ 零错误 |
 | API 断言 | ✅ 217/217（34+53+34+33+32+31） |
 | UI E2E | ✅ 38 阶段，无页面 JS 异常 |
+| 全账号巡检 | ✅ 183/183 页，0 API/Console/JS 错误 |
 | 冷启动 | ✅ 59 表 + 全量种子 |
 | 全链路检查 | ✅ 5 Stage / 22 项，passed=true |
 
@@ -253,6 +255,7 @@ npm run e2e:all        # Stage1~5 UI E2E：38 个阶段
 | `docs/03-验收报告.md` | 全链路验收报告、数据校验、Mock 边界 |
 | `docs/04-架构对照检查.md` | 与原始技术架构方案的对照、核心闭环核验、遗漏/过度开发审查与整改建议 |
 | `docs/05-软著合规检查.md` | 软著登记材料要求对照、名称/版本/数据整改、申报缺口与材料清单 |
+| `docs/06-全账号功能测试报告.md` | 12 账号全量页面巡检、错误修复、截图更新与复现命令 |
 | `docs/screenshots/` | 8 张跨端精选场景截图（调度、一单制、单证、大屏、结算、分析、集成、验收） |
 | `docs/screenshots/roles/` | 16 张角色端功能截图（登录、货主、货代、承运人、港站、结算、金融、保险、监管、运营） |
 

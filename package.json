@@ -20,6 +20,7 @@
     "e2e:stage4": "node scripts/e2e-stage4.mjs",
     "e2e:stage5": "node scripts/e2e-stage5.mjs",
     "e2e:all": "node scripts/e2e-smoke.mjs && node scripts/e2e-stage2.mjs && node scripts/e2e-stage3.mjs && node scripts/e2e-stage4.mjs && node scripts/e2e-stage5.mjs",
+    "audit:accounts": "node scripts/audit-accounts.mjs",
     "db:init": "node api/db/init.mjs"
   },
   "devDependencies": {
