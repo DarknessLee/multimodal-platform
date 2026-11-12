@@ -3,7 +3,7 @@
     <div class="page-header">
       <div>
         <h2 class="page-title" data-testid="page-title">单证中心</h2>
-        <p class="page-subtitle">运单/装箱单/回单电子单证 · 上传 → Mock OCR → 签章 → 哈希链存证</p>
+        <p class="page-subtitle">运单/装箱单/回单电子单证 · 上传 → OCR 识别 → 签章 → 哈希链存证</p>
       </div>
       <div class="page-actions">
         <PermissionGuard permission="document:upload">
@@ -159,7 +159,7 @@
                 :loading="ocrLoading"
                 @click="rerunOcr"
               >
-                重新识别（Mock OCR）
+                重新识别（OCR）
               </el-button>
             </PermissionGuard>
             <PermissionGuard permission="document:sign">
@@ -233,7 +233,7 @@
           show-icon
         />
         <p class="muted upload-tip">
-          POD 回单上传后自动执行 Mock OCR（识别箱号 / 签收人 / 日期 / 数量），并写入审计、事件与哈希链存证。
+          POD 回单上传后自动执行 OCR 识别（识别箱号 / 签收人 / 日期 / 数量），并写入审计、事件与哈希链存证。
         </p>
       </el-form>
       <template #footer>
@@ -243,7 +243,7 @@
     </el-dialog>
 
     <!-- 签章 -->
-    <el-dialog v-model="signVisible" title="单证电子签章（Mock CA）" width="440px" :close-on-click-modal="false">
+    <el-dialog v-model="signVisible" title="单证电子签章" width="440px" :close-on-click-modal="false">
       <el-form label-position="top" @submit.prevent>
         <el-form-item label="签章人">
           <el-input v-model="signerName" data-testid="signer-name" placeholder="请输入签章人姓名" maxlength="20" clearable />

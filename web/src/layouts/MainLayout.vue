@@ -26,7 +26,7 @@
 
       <div class="aside-footer">
         <div class="aside-footer__line">公路 · 海运 · 铁路</div>
-        <div class="aside-footer__line subtle">演示数据 · 全链路闭环</div>
+        <div class="aside-footer__line subtle">业务数据 · 全链路协同</div>
       </div>
     </el-aside>
 

@@ -1,7 +1,7 @@
 <template>
   <el-dialog
     v-model="visible"
-    title="合同签署（Mock CA）"
+    title="合同签署（电子签章）"
     width="460px"
     :close-on-click-modal="false"
     @closed="reset"

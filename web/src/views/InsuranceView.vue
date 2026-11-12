@@ -3,7 +3,7 @@
     <div class="page-header">
       <div>
         <h2 class="page-title" data-testid="page-title">保险保单</h2>
-        <p class="page-subtitle">货运险投保（Mock 保险机构）· 保费 = 保额 × 费率</p>
+        <p class="page-subtitle">货运险投保（保险机构）· 保费 = 保额 × 费率</p>
       </div>
       <div class="page-actions">
         <PermissionGuard permission="insurance:create">

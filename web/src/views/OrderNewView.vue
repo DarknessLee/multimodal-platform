@@ -80,7 +80,7 @@
           </el-col>
           <el-col :span="24">
             <el-form-item label="备注">
-              <el-input v-model="quickForm.remark" placeholder="选填，如：演示订单" clearable />
+              <el-input v-model="quickForm.remark" placeholder="选填，如：业务订单" clearable />
             </el-form-item>
           </el-col>
         </el-row>
@@ -244,7 +244,7 @@ const quickForm = reactive({
   origin: '上海嘉定',
   destination: '成都青白江',
   requiredPickupDate: toDateString(tomorrow),
-  remark: '演示订单',
+  remark: '业务订单',
 });
 
 const cargoLines = ref<CargoLine[]>([
@@ -346,7 +346,7 @@ function fillSample(): void {
   quickForm.origin = '上海嘉定';
   quickForm.destination = '成都青白江';
   quickForm.requiredPickupDate = toDateString(tomorrow);
-  quickForm.remark = '演示订单';
+  quickForm.remark = '业务订单';
   cargoLines.value = [
     {
       goodsName: '汽车配件',

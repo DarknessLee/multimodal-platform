@@ -3,7 +3,7 @@
     <div class="page-header">
       <div>
         <h2 class="page-title" data-testid="page-title">水路工作台</h2>
-        <p class="page-subtitle">订舱与订舱确认（港口 EDI Mock：SEA_BOOKING / SEA_BOOKING_CONFIRM）</p>
+        <p class="page-subtitle">订舱与订舱确认（港口 EDI：SEA_BOOKING / SEA_BOOKING_CONFIRM）</p>
       </div>
       <div class="page-actions">
         <el-button :loading="loading" @click="load">刷新</el-button>

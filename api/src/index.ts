@@ -12,7 +12,7 @@ async function bootstrap(): Promise<void> {
 
   const app = createApp();
   const server = app.listen(env.port, () => {
-    console.log(`[api] 多式联运演示版 API 已启动：http://127.0.0.1:${env.port}`);
+    console.log(`[api] 多式联运平台 API 已启动：http://127.0.0.1:${env.port}`);
   });
 
   const shutdown = (signal: string): void => {

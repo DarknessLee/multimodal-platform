@@ -124,12 +124,12 @@ npm run dev       # 同时启动 API(8080) + Web(5173)
 
 ## 项目截图（角色视角）
 
-> `docs/screenshots/` 保留 8 张跨端精选场景图；本节按 12 个角色端补充功能点截图，新增图在 `docs/screenshots/roles/`。
+> `docs/screenshots/ui/` 收录 8 张跨端精选场景图与 16 张角色端功能截图。
 > 重叠功能直接复用精选图，不重复生成；截图均为系统实际运行界面。
 
 ### 登录入口（12 个账号）
 
-<img src="docs/screenshots/roles/00-登录页.png" alt="登录页-12个账号" width="760" />
+<img src="docs/screenshots/ui/00-登录页.png" alt="登录页-12个账号" width="760" />
 
 ### 货主端（shipper01）
 
@@ -137,15 +137,15 @@ npm run dev       # 同时启动 API(8080) + Web(5173)
 - 订单详情：货物、线路、运单、分段、账单
 - 运单跟踪：全程轨迹、分段状态、签收入口
 
-<img src="docs/screenshots/roles/01-货主-平台总览.png" alt="货主-平台总览" width="760" />
-<img src="docs/screenshots/roles/02-货主-订单详情.png" alt="货主-订单详情" width="760" />
-<img src="docs/screenshots/roles/03-货主-运单跟踪.png" alt="货主-运单跟踪" width="760" />
+<img src="docs/screenshots/ui/01-货主-平台总览.png" alt="货主-平台总览" width="760" />
+<img src="docs/screenshots/ui/02-货主-订单详情.png" alt="货主-订单详情" width="760" />
+<img src="docs/screenshots/ui/03-货主-运单跟踪.png" alt="货主-运单跟踪" width="760" />
 
 ### 货代端（forwarder01）
 
 - 报价工作台：按线路/箱型询价、发送报价、跟进合同
 
-<img src="docs/screenshots/roles/04-货代-报价工作台.png" alt="货代-报价工作台" width="760" />
+<img src="docs/screenshots/ui/04-货代-报价工作台.png" alt="货代-报价工作台" width="760" />
 
 ### MTO 端（mto01）
 
@@ -153,65 +153,65 @@ npm run dev       # 同时启动 API(8080) + Web(5173)
 - 一单制运单：主单/分段/事件/箱/单证/存证校验（复用精选图）
 - 监控大屏：KPI、轨迹、模式分布、预警（复用精选图）
 
-<img src="docs/screenshots/01-智能调度三方案.png" alt="MTO-智能调度三方案" width="760" />
-<img src="docs/screenshots/02-一单制运单详情.png" alt="MTO-一单制运单详情" width="760" />
-<img src="docs/screenshots/04-监控大屏.png" alt="MTO-监控大屏" width="760" />
+<img src="docs/screenshots/ui/01-智能调度三方案.png" alt="MTO-智能调度三方案" width="760" />
+<img src="docs/screenshots/ui/02-一单制运单详情.png" alt="MTO-一单制运单详情" width="760" />
+<img src="docs/screenshots/ui/04-监控大屏.png" alt="MTO-监控大屏" width="760" />
 
 ### 公路承运人（carrier01）
 
 - 运输任务：接单、提货、送达、任务状态
 
-<img src="docs/screenshots/roles/05-公路承运人-运输任务.png" alt="公路承运人-运输任务" width="760" />
+<img src="docs/screenshots/ui/05-公路承运人-运输任务.png" alt="公路承运人-运输任务" width="760" />
 
 ### 铁路承运人（rail01）
 
 - 95306 工作台：需求车提报、受理回执、分段状态
 
-<img src="docs/screenshots/roles/06-铁路承运人-铁路工作台.png" alt="铁路承运人-铁路工作台" width="760" />
+<img src="docs/screenshots/ui/06-铁路承运人-铁路工作台.png" alt="铁路承运人-铁路工作台" width="760" />
 
 ### 水路承运人（sea01）
 
 - 水路工作台：订舱、确认回执、分段状态
 
-<img src="docs/screenshots/roles/07-水路承运人-水路工作台.png" alt="水路承运人-水路工作台" width="760" />
+<img src="docs/screenshots/ui/07-水路承运人-水路工作台.png" alt="水路承运人-水路工作台" width="760" />
 
 ### 港站端（terminal01）
 
 - 港站作业：进出场、箱况、到港/到站
 - 箱管中心：箱动态、堆存、放箱/还箱/维修
 
-<img src="docs/screenshots/roles/08-港站-港站作业.png" alt="港站-港站作业" width="760" />
-<img src="docs/screenshots/roles/09-港站-箱管中心.png" alt="港站-箱管中心" width="760" />
+<img src="docs/screenshots/ui/08-港站-港站作业.png" alt="港站-港站作业" width="760" />
+<img src="docs/screenshots/ui/09-港站-箱管中心.png" alt="港站-箱管中心" width="760" />
 
 ### 结算端（settlement01）
 
 - 结算中心：AR/AP/毛利、应收应付账单（复用精选图）
 - 对账管理：对账单创建/发送/确认/差异
 
-<img src="docs/screenshots/05-结算中心.png" alt="结算-结算中心" width="760" />
-<img src="docs/screenshots/roles/10-结算-对账管理.png" alt="结算-对账管理" width="760" />
+<img src="docs/screenshots/ui/05-结算中心.png" alt="结算-结算中心" width="760" />
+<img src="docs/screenshots/ui/10-结算-对账管理.png" alt="结算-对账管理" width="760" />
 
 ### 金融端（finance01）
 
 - 保理工作台：申请、审批、放款
 - 经营分析：收入/成本/毛利、客户/模式、AR 账龄（复用精选图）
 
-<img src="docs/screenshots/roles/11-金融-保理工作台.png" alt="金融-保理工作台" width="760" />
-<img src="docs/screenshots/06-经营分析.png" alt="金融-经营分析" width="760" />
+<img src="docs/screenshots/ui/11-金融-保理工作台.png" alt="金融-保理工作台" width="760" />
+<img src="docs/screenshots/ui/06-经营分析.png" alt="金融-经营分析" width="760" />
 
 ### 保险端（insurance01）
 
 - 保险保单：保单列表、投保、保费/保额
 
-<img src="docs/screenshots/roles/12-保险-保险保单.png" alt="保险-保险保单" width="760" />
+<img src="docs/screenshots/ui/12-保险-保险保单.png" alt="保险-保险保单" width="760" />
 
 ### 监管端（regulator01）
 
 - 监管中心：报送/合规 KPI、最近报送与检查
 - 监管报送：生成、提交、受理回执、退回
 
-<img src="docs/screenshots/roles/13-监管-监管中心.png" alt="监管-监管中心" width="760" />
-<img src="docs/screenshots/roles/14-监管-监管报送.png" alt="监管-监管报送" width="760" />
+<img src="docs/screenshots/ui/13-监管-监管中心.png" alt="监管-监管中心" width="760" />
+<img src="docs/screenshots/ui/14-监管-监管报送.png" alt="监管-监管报送" width="760" />
 
 ### 平台运营端（admin01）
 
@@ -219,9 +219,9 @@ npm run dev       # 同时启动 API(8080) + Web(5173)
 - 运营后台：健康巡检、数据量、任务执行、失败报文
 - 全链路验收：5 Stage / 22 项检查（复用精选图）
 
-<img src="docs/screenshots/07-集成中心.png" alt="平台运营-集成中心" width="760" />
-<img src="docs/screenshots/roles/15-平台运营-运营后台.png" alt="平台运营-运营后台" width="760" />
-<img src="docs/screenshots/08-全链路验收.png" alt="平台运营-全链路验收" width="760" />
+<img src="docs/screenshots/ui/07-集成中心.png" alt="平台运营-集成中心" width="760" />
+<img src="docs/screenshots/ui/15-平台运营-运营后台.png" alt="平台运营-运营后台" width="760" />
+<img src="docs/screenshots/ui/08-全链路验收.png" alt="平台运营-全链路验收" width="760" />
 
 ---
 
@@ -256,8 +256,8 @@ npm run audit:accounts # 全账号只读巡检：12 账号可见页面（API/控
 | `docs/02-接口契约.md` | 最终接口索引、错误码、核心状态机 |
 | `docs/03-验收报告.md` | 全链路验收报告、数据校验、实现边界 |
 | `docs/06-全账号功能测试报告.md` | 12 账号全量页面巡检、错误修复、截图更新与复现命令 |
-| `docs/screenshots/` | 8 张跨端精选场景截图（调度、一单制、单证、大屏、结算、分析、集成、验收） |
-| `docs/screenshots/roles/` | 16 张角色端功能截图（登录、货主、货代、承运人、港站、结算、金融、保险、监管、运营） |
+| `docs/screenshots/ui/` | 8 张跨端精选场景截图（调度、一单制、单证、大屏、结算、分析、集成、验收） |
+| `docs/screenshots/ui/` | 16 张角色端功能截图（登录、货主、货代、承运人、港站、结算、金融、保险、监管、运营） |
 
 ---
 

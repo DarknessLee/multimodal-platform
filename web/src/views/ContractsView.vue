@@ -3,7 +3,7 @@
     <div class="page-header">
       <div>
         <h2 class="page-title">合同管理</h2>
-        <p class="page-subtitle">框架合同 / 单票合同 · 创建 → 发送 → Mock CA 签署</p>
+        <p class="page-subtitle">框架合同 / 单票合同 · 创建 → 发送 → 电子签章</p>
       </div>
       <div class="page-actions">
         <PermissionGuard permission="contract:create">

@@ -97,7 +97,7 @@
           </div>
 
           <div class="card">
-            <h3 class="card-title"><span class="card-title-text">签署信息（Mock CA）</span></h3>
+            <h3 class="card-title"><span class="card-title-text">签署信息（电子签章）</span></h3>
             <el-descriptions :column="1" border size="small">
               <el-descriptions-item label="签署状态">
                 <StatusTag kind="contract" :status="contract.status" :label="contract.statusLabel" size="small" />
@@ -110,7 +110,7 @@
               <el-descriptions-item label="签署文件">{{ contract.fileUrl || '—' }}</el-descriptions-item>
             </el-descriptions>
             <p v-if="contract.status === 'PENDING_SIGN'" class="muted sign-tip">
-              合同已发送待签署，点击右上角「签署合同」完成 Mock CA 数字签章。
+              合同已发送待签署，点击右上角「签署合同」完成电子签章。
             </p>
             <p v-else-if="contract.status === 'SIGNED'" class="muted sign-tip">
               合同已签署，可用于报价接受时关联订单（订单状态为「已签合同」）。

@@ -3,7 +3,7 @@
     <div class="page-header">
       <div>
         <h2 class="page-title" data-testid="page-title">监管报送</h2>
-        <p class="page-subtitle">按周期聚合生成报送单 → 提交监管 → 受理回执（Mock）</p>
+        <p class="page-subtitle">按周期聚合生成报送单 → 提交监管 → 受理回执</p>
       </div>
       <div class="page-actions">
         <PermissionGuard permission="regulator:report-create">

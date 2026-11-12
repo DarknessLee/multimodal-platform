@@ -3,7 +3,7 @@
     <div class="page-header">
       <div>
         <h2 class="page-title" data-testid="page-title">铁路工作台</h2>
-        <p class="page-subtitle">95306 需求车提报与受理回执（JT/T 1351 语义 · Mock 适配器）</p>
+        <p class="page-subtitle">95306 需求车提报与受理回执（JT/T 1351 语义）</p>
       </div>
       <div class="page-actions">
         <el-button :loading="loading" @click="load">刷新</el-button>

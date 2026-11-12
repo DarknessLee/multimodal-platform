@@ -3,7 +3,7 @@
     <div class="page-header">
       <div>
         <h2 class="page-title" data-testid="page-title">定时任务</h2>
-        <p class="page-subtitle">Mock 手动触发 · 最近执行结果与耗时 · 执行写日志与审计</p>
+        <p class="page-subtitle">手动触发 · 最近执行结果与耗时 · 执行写日志与审计</p>
       </div>
       <div class="page-actions">
         <el-button :loading="loading" @click="load">刷新</el-button>
@@ -19,7 +19,7 @@
     <div class="card">
       <div class="card-title">
         <span class="card-title-text">任务列表（{{ jobs.length }}）</span>
-        <span class="muted">手动触发 Mock 执行，结果写入 job_log</span>
+        <span class="muted">手动触发任务执行，结果写入 job_log</span>
       </div>
       <el-table v-loading="loading" :data="jobs" size="small" border stripe>
         <el-table-column label="任务编码" min-width="180">

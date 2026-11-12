@@ -119,7 +119,7 @@
             <div class="preview-node">
               <span class="preview-index">2</span>
               <div>
-                <div class="preview-mode sea">海运 · 中远海运（mock）</div>
+                <div class="preview-mode sea">海运 · 中远海运</div>
                 <div class="preview-name">上海洋山港 → 武汉阳逻港</div>
               </div>
               <div class="preview-amount">¥5200.00</div>
@@ -127,7 +127,7 @@
             <div class="preview-node">
               <span class="preview-index">3</span>
               <div>
-                <div class="preview-mode rail">铁路 · 中铁集装箱（mock）</div>
+                <div class="preview-mode rail">铁路 · 中铁集装箱</div>
                 <div class="preview-name">武汉吴家山站 → 成都城厢站</div>
               </div>
               <div class="preview-amount">¥8600.00</div>

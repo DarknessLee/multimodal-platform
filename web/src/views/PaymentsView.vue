@@ -3,7 +3,7 @@
     <div class="page-header">
       <div>
         <h2 class="page-title" data-testid="page-title">收付款</h2>
-        <p class="page-subtitle">登记收款/付款 → 银行回执 Mock 确认 → 核销账单</p>
+        <p class="page-subtitle">登记收款/付款 → 银行回执确认 → 核销账单</p>
       </div>
       <div class="page-actions">
         <PermissionGuard permission="payment:record">

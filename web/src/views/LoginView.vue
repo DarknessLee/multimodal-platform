@@ -6,7 +6,7 @@
         <h1 class="login-brand__title">多式联运供应链协同平台</h1>
         <p class="login-brand__subtitle">V1.0 · 一单到底 · 全程可视 · 一次结算</p>
 
-        <div class="demo-title">演示账号（密码统一 demo123，点击一键登录）</div>
+        <div class="demo-title">账号快捷登录（点击下方账号卡片）</div>
         <div class="demo-list">
           <button
             v-for="account in demoAccounts"
@@ -46,7 +46,7 @@
                 v-model="form.password"
                 data-testid="login-password"
                 type="password"
-                placeholder="演示密码 demo123"
+                placeholder="请输入密码"
                 size="large"
                 show-password
                 autocomplete="current-password"

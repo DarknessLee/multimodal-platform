@@ -246,7 +246,7 @@ function adapterChecks(adapter: IntegrationAdapterRow) {
     {
       name: '连通性',
       status: online ? (degraded ? 'WARN' : 'PASS') : 'FAIL',
-      detail: online ? `HTTP 200，${adapter.endpoint}` : '连接超时（Mock）',
+      detail: online ? `HTTP 200，${adapter.endpoint}` : '连接超时',
       latencyMs: baseLatency,
     },
     {
@@ -293,7 +293,7 @@ export async function testAdapter(id: number, user: AuthUser, ip: string | null)
   const success = status !== 'OFFLINE';
   const latencyMs = 30 + Number(adapter.id) * 7;
   const testedAt = formatDateTime(nowDate());
-  const message = success ? 'Mock 连通性测试通过' : '适配器离线，连通性测试失败';
+  const message = success ? '连通性测试通过' : '适配器离线，连通性测试失败';
   await withTransaction(async (conn) => {
     await writeAudit(conn, {
       user,

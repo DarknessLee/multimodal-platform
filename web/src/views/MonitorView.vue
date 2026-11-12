@@ -4,7 +4,7 @@
       <div class="monitor-title">
         <span class="monitor-title__dot" />
         <span>多式联运可视化监控大屏</span>
-        <span class="monitor-title__sub">Stage 3 · 实时调度与异常监控</span>
+        <span class="monitor-title__sub">实时调度与异常监控</span>
       </div>
       <div class="monitor-tools">
         <span class="monitor-clock mono">{{ clock }}</span>

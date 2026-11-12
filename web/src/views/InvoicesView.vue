@@ -3,7 +3,7 @@
     <div class="page-header">
       <div>
         <h2 class="page-title" data-testid="page-title">发票管理</h2>
-        <p class="page-subtitle">按应收账单开具电子发票（Mock 税务适配器）· 已开具可作废</p>
+        <p class="page-subtitle">按应收账单开具电子发票 · 已开具可作废</p>
       </div>
       <div class="page-actions">
         <PermissionGuard permission="invoice:issue">
